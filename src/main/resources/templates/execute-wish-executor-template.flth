@@ -1,0 +1,8 @@
+<html>
+<head></head>
+<body>
+    <p>Hello, ${firstname?default("Angel")}!</p>
+    <p>You are a real angel! Everything will come back to you!</b></p>
+
+</body>
+</html>

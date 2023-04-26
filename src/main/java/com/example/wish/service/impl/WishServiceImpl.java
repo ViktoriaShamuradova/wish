@@ -1,0 +1,416 @@
+package com.example.wish.service.impl;
+
+import com.example.wish.component.KarmaCounter;
+import com.example.wish.component.NotificationManagerService;
+import com.example.wish.component.ProfileDtoBuilder;
+import com.example.wish.component.WishMapper;
+import com.example.wish.dto.*;
+import com.example.wish.entity.*;
+import com.example.wish.exception.profile.ProfileException;
+import com.example.wish.exception.profile.ProfileNotFoundException;
+import com.example.wish.exception.wish.*;
+import com.example.wish.model.CurrentProfile;
+import com.example.wish.model.search_request.WishSearchRequest;
+import com.example.wish.repository.ExecutingWishRepository;
+import com.example.wish.repository.FinishedWishRepository;
+import com.example.wish.repository.ProfileRepository;
+import com.example.wish.repository.WishRepository;
+import com.example.wish.service.WishService;
+import com.example.wish.util.DateUtil;
+import com.example.wish.util.ImageUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@RequiredArgsConstructor
+@Transactional
+@Slf4j
+@Service
+public class WishServiceImpl implements WishService {
+
+    private final ProfileRepository profileRepository;
+    private final ExecutingWishRepository executingWishRepository;
+    private final FinishedWishRepository finishedWishRepository;
+    private final WishRepository wishRepository;
+    private final WishMapper wishMapper;
+    private final ProfileDtoBuilder profileDtoBuilder;
+    private final NotificationManagerService notificationManagerService;
+    private final AuthenticationService authenticationService;
+    private final KarmaCounter karmaCounter;
+
+
+    private static final int MAX_COUNT_WISHES = 7;
+    private static final long MAX_COUNT_OF_DAYS_TO_FINISH_WISH = 7;
+    private static final long MAX_COUNT_OF_DAYS_TO_CONFIRM_WISH = 7;
+
+    @Override
+    public MainScreenProfileDto create(CreateWishRequest wishDto, MultipartFile file) throws ParseException, IOException {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        Wish wish = wishMapper.convertToEntity(wishDto);
+
+        validateNewWish(profile, wish);
+
+        wish.setPhoto(ImageUtil.compressImage(file.getBytes()));
+        wish.setStatus(WishStatus.NEW);
+        wish.setCreated(Timestamp.from(Instant.now()));
+
+        profile.addInOwnWishes(wish);
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.save(profile));
+    }
+
+    @Override
+    public MainScreenProfileDto update(long id, CreateWishRequest wishDto, MultipartFile file) throws IOException {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        Wish wish = wishRepository.findById(id).orElseThrow(() -> new WishNotFoundException(id));
+        if (wish.getOwnProfile().getId() != profile.getId())
+            throw new WishException("Profile cannot update this wish because it does not belong to their ownWishes list.");
+
+        if (wish.getStatus() == WishStatus.IN_PROGRESS || wish.getStatus() == WishStatus.FINISHED)
+            throw new WishException("can't update the wish until it's in progress");
+
+        validateByPriority(profile, wish);
+
+        wish.setTitle(wishDto.getTitle());
+        wish.setDescription(wishDto.getDescription());
+        wish.setTags(wishDto.getTags());
+        wish.setPriority(wishDto.getPriority());
+
+        if (!file.isEmpty()) {
+            wish.setPhoto(ImageUtil.compressImage(file.getBytes()));
+        } else {
+            wish.setPhoto(null);
+        }
+
+        wishRepository.save(wish);
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(profile.getId()).get());
+    }
+
+    @Override
+    public MainScreenProfileDto finish(long id) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        wishRepository.findById(id).orElseThrow(() -> new WishNotFoundException(id));
+        ExecutingWish executingWish = executingWishRepository.findByWishId(id).orElseThrow(() -> new WishException("try to finish not executing wish"));
+        if (executingWish.getExecutingProfile().getId() != profile.getId())
+            throw new WishException("try to finish another's wish");
+
+        if (executingWish.getExecutingStatus() == ExecuteStatus.IN_PROGRESS) {
+            executingWish.setExecutingStatus(ExecuteStatus.WAITING_FOR_CONFIRMATION);
+        } else {
+            executingWish.setExecutingStatus(ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS);
+        }
+
+        Date finish = executingWish.getFinish();
+        finish = Timestamp.from(finish.toInstant().plus(MAX_COUNT_OF_DAYS_TO_CONFIRM_WISH, ChronoUnit.DAYS));
+        executingWish.setFinish(finish);
+        executingWishRepository.save(executingWish);
+
+        notificationManagerService.sendExecuteWishToOwnerToConfirm(executingWish.getWish().getOwnProfile(), executingWish);
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(profile.getId()).get());
+    }
+
+    /**
+     * @param confirmWishRequest
+     * @return
+     */
+    @Override
+    public MainScreenProfileDto confirm(ConfirmWishRequest confirmWishRequest) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        ExecutingWish executingWish = executingWishRepository.findByWishId(confirmWishRequest.getWishId())
+                .orElseThrow(() -> new WishNotFoundException(confirmWishRequest.getWishId()));
+        if (executingWish.getWish().getOwnProfile().getId() != currentProfile.getId())
+            throw new WishException("can't confirm own wish");
+
+        if (confirmWishRequest.getIsConfirm().equals(true)) {
+            return confirmProcess(executingWish, currentProfile.getId());
+        } else {
+            FinishedWish finishedWish = new FinishedWish(executingWish.getExecutingProfile(),
+                    executingWish.getWish(),
+                    Timestamp.from(Instant.now()),
+                    FinishWishStatus.FINISHED_FAILED,
+                    confirmWishRequest.getReasonOfFailedFromOwner());
+
+            finishedWishRepository.save(finishedWish);
+            executingWishRepository.delete(executingWish);
+
+            executingWish.getWish().setStatus(WishStatus.NEW);
+            wishRepository.save(executingWish.getWish());
+
+            notificationManagerService.sendConfirmWishFailedToExecutor(executingWish.getExecutingProfile());
+            notificationManagerService.sendConfirmWishFailedToOwner(executingWish.getWish().getOwnProfile());
+
+            return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
+        }
+
+    }
+
+    private MainScreenProfileDto confirmProcess(ExecutingWish executingWish, long profileId) {
+        FinishedWish finishedWish = new FinishedWish(executingWish.getExecutingProfile(),
+                executingWish.getWish(),
+                Timestamp.from(Instant.now()),
+                FinishWishStatus.FINISHED_SUCCESS);
+
+
+        Profile executedProfile = karmaCounter.count(executingWish);
+        profileRepository.save(karmaCounter.changeStatus(executedProfile));
+
+        finishedWish.setEarnKarma(karmaCounter.calculateAdditionalSumToKarma(executingWish));
+        finishedWishRepository.save(finishedWish);
+        executingWishRepository.delete(executingWish);
+
+        executingWish.getWish().setStatus(WishStatus.FINISHED);
+        wishRepository.save(executingWish.getWish());
+
+        notificationManagerService.sendConfirmWishSuccessToExecutor(executingWish.getExecutingProfile());
+        notificationManagerService.sendConfirmWishSuccessToOwner(executingWish.getWish().getOwnProfile());
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(profileId).get());
+    }
+
+    @Override
+    public MainScreenProfileDto delete(long id) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Wish wish = wishRepository.findById(id)
+                .orElseThrow(() -> new WishNotFoundException(id));
+
+        if (wish.getOwnProfile().getId() != currentProfile.getId())
+            throw new WishException("can't delete not own wish");
+        if (wish.getStatus() == WishStatus.IN_PROGRESS) throw new WishException("can't delete in progress wish");
+
+//значит в статусе new или deleted
+        wish.setStatus(WishStatus.DELETED);
+        wishRepository.save(wish);
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
+    }
+
+    @Override
+    public MainScreenProfileDto cancelExecution( long id) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Wish wish = wishRepository.findById(id)
+                .orElseThrow(() -> new WishNotFoundException(id));
+
+        ExecutingWish executingWish = executingWishRepository.findByWishId(id)
+                .orElseThrow(() -> new WishException("you do not execute this wish"));
+
+        if (executingWish.getExecutingProfile().getId() != currentProfile.getId())
+            throw new WishException("this wish not your executing wish");
+
+        FinishedWish finishedWish = new FinishedWish();
+        finishedWish.setFinish(Timestamp.from(Instant.now()));
+        if (executingWish.getExecutingStatus() == ExecuteStatus.IN_PROGRESS_ANONYMOUS) {
+            finishedWish.setStatus(FinishWishStatus.FINISHED_FAILED_ANONYMOUS);
+        } else {
+            finishedWish.setStatus(FinishWishStatus.FINISHED_FAILED);
+        }
+        finishedWish.setExecutedProfile(executingWish.getExecutingProfile());
+        finishedWish.setWish(executingWish.getWish());
+
+        wish.setStatus(WishStatus.NEW);
+        wishRepository.save(wish);
+        executingWishRepository.delete(executingWish);
+        finishedWishRepository.save(finishedWish);
+
+        notificationManagerService.sendCancelExecutionToExecutor(executingWish.getExecutingProfile());
+        notificationManagerService.sendCancelExecutionToOwner(executingWish.getWish().getOwnProfile());
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
+    }
+
+    /**
+     * фильтр желаний для других пользователей происходит по статусу new
+     * Нужно установить значения для  sql.Date fromDate и sql.Date toDate для дальнейшей фильтрации в репозитории
+     * в формате yyyy-mm-dd как в базе данных, если в реквесте есть мин и мах возраст
+     *
+     * @param pageable
+     * @param request
+     * @return
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public Page<SearchWishDto> find(Pageable pageable, WishSearchRequest request) {
+        request.setStatus(WishStatus.NEW);
+
+        if (request.getTitle() == null &&
+                request.getPriorities() == null &&
+                request.getProfileSex() == null &&
+                request.getCountry() == null &&
+                request.getMinAge() == null &&
+                request.getMaxAge() == null &&
+                request.getTags() == null) {
+            Page<Wish> all = wishRepository.findByStatus(WishStatus.NEW, pageable);
+
+            Stream<SearchWishDto> searchWishDtoStream = all.getContent().stream().map(wishMapper::convertToSearchDto);
+
+            return new PageImpl<>(searchWishDtoStream.collect(Collectors.toList()), pageable, all.getTotalElements());
+        }
+
+        if (request.getMinAge() != null && request.getMaxAge() == null) {
+            request.setFromDate(DateUtil.getDate(100));
+            request.setToDate(DateUtil.getDate(request.getMinAge()));
+        }
+        if (request.getMinAge() == null && request.getMaxAge() != null) {
+            request.setFromDate(DateUtil.getDate(request.getMaxAge()));
+            request.setToDate(DateUtil.getDate(10));
+        }
+        if (request.getMinAge() != null && request.getMaxAge() != null) {
+            request.setFromDate(DateUtil.getDate(request.getMaxAge()));
+            request.setToDate(DateUtil.getDate(request.getMinAge()));
+        }
+
+        Page<Wish> all = wishRepository.findAll(WishRepository.Specs.bySearchRequest(request), pageable);
+
+        Stream<SearchWishDto> searchWishDtoStream = all.getContent().stream().map(wishMapper::convertToSearchDto);
+
+        return new PageImpl<>(searchWishDtoStream.collect(Collectors.toList()), pageable, all.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public SearchScreenWishDto getSearchScreenWish(Pageable pageable) {
+
+        Set<Tag> tagSet = EnumSet.allOf(Tag.class);
+        int countOfWishes = wishRepository.countByStatus(WishStatus.NEW);
+        Page<Wish> wishes = wishRepository.findByStatus(WishStatus.NEW, pageable);
+
+        Stream<SearchWishDto> wishDtoStream = wishes.getContent().stream().map(wishMapper::convertToSearchDto);
+
+        SearchScreenWishDto searchScreenWishDto = new SearchScreenWishDto();
+        searchScreenWishDto.setWishes(wishDtoStream.collect(Collectors.toList()));
+        searchScreenWishDto.setCountAllOfWishes(countOfWishes);
+        searchScreenWishDto.setTags(tagSet);
+
+        return searchScreenWishDto;
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public AbstractWishDto find(long id) {
+        Wish wish = wishRepository.findById(id).orElseThrow(() -> new WishNotFoundException(id));
+
+        if (wish.getStatus() == WishStatus.NEW) {
+            return wishMapper.convertToDto(wish);
+        } else if (wish.getStatus() == WishStatus.IN_PROGRESS) {
+            return wishMapper.convertToDto(executingWishRepository.findByWishId(id).get());
+        }
+        throw new WishException("exception");
+    }
+
+    @Override
+    public MainScreenProfileDto execute(long wishId, Boolean anonymously) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        Wish wish = wishRepository.findById(wishId)
+                .orElseThrow(() -> new WishNotFoundException(wishId));
+
+        if (wish.getOwnProfile().getId() == profile.getId()) throw new ProfileException("can't execute own wish");
+
+        if (wish.getStatus() == WishStatus.IN_PROGRESS) throw new WishException("wish is already executing");
+
+
+        wish.setStatus(WishStatus.IN_PROGRESS);
+
+        ExecutingWish executingWish = new ExecutingWish(wish);
+
+        if (anonymously) {
+            executingWish.setExecutingStatus(ExecuteStatus.IN_PROGRESS_ANONYMOUS);
+        } else {
+            executingWish.setExecutingStatus(ExecuteStatus.IN_PROGRESS);
+        }
+        executingWish.setExecutingProfile(profile);
+
+        Timestamp now = Timestamp.from(Instant.now());
+        Timestamp result = Timestamp.from(now.toInstant().plus(MAX_COUNT_OF_DAYS_TO_FINISH_WISH, ChronoUnit.DAYS));
+        executingWish.setFinish(result);
+
+        executingWishRepository.save(executingWish);
+
+        notificationManagerService.sendExecuteWishToExecutor(executingWish.getExecutingProfile());
+        notificationManagerService.sendExecuteWishToOwner(wish.getOwnProfile());
+
+        return profileDtoBuilder.buildMainScreen(profileRepository.findById(profile.getId()).get());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public StoryWishDto getStoryWish() {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        StoryWishDto storyWish = new StoryWishDto();
+        List<FinishedWish> finishedWishesAnother = finishedWishRepository
+                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_SUCCESS, currentProfile.getId());
+        List<FinishedWish> finishedAnonymousWishesAnother = finishedWishRepository
+                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_SUCCESS_ANONYMOUS, currentProfile.getId());
+        finishedWishesAnother.addAll(finishedAnonymousWishesAnother);
+
+        List<FinishedWish> notFinishedWishesAnother = finishedWishRepository
+                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_FAILED, currentProfile.getId());
+        List<FinishedWish> notFinishedAnonymousWishesAnother = finishedWishRepository
+                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_FAILED_ANONYMOUS, currentProfile.getId());
+        notFinishedWishesAnother.addAll(notFinishedAnonymousWishesAnother);
+
+        List<FinishedWish> ownFinished = finishedWishRepository.findByWishOwnProfileId(currentProfile.getId());
+        List<Wish> ownWishesDeleted = wishRepository.findByOwnProfileIdAndStatus(currentProfile.getId(), WishStatus.DELETED);
+
+        storyWish.setAnotherFinishedWishes(finishedWishesAnother.stream().map(wishMapper::convertToDto).collect(Collectors.toList()));
+        storyWish.setAnotherNotFinishedWishes(notFinishedWishesAnother.stream().map(wishMapper::convertToDto).collect(Collectors.toList()));
+
+        List<FinishedWishDto> collect = ownFinished.stream().map(wishMapper::convertToDto).collect(Collectors.toList());
+        List<AbstractWishDto> collect1 = ownWishesDeleted.stream().map(wishMapper::convertToDto).collect(Collectors.toList());
+        collect1.addAll(collect);
+
+        storyWish.setOwnWishes(collect1);
+
+        return storyWish;
+    }
+
+    private void validateNewWish(Profile profile, Wish wish) {
+        if (!profile.getOwnWishes().isEmpty()) {
+
+            if (profile.getOwnWishes().size() >= MAX_COUNT_WISHES)
+                throw new MaxCountOfWishesException("too much wishes. You have " + MAX_COUNT_WISHES + " wishes");
+
+            if (profile.getOwnWishes().contains(wish))
+                throw new TheSameWishExistsException("the same wish");
+
+            validateByPriority(profile, wish);
+        }
+    }
+
+    private void validateByPriority(Profile profile, Wish wish) {
+        for (Wish w : profile.getOwnWishes()) {
+            if (Objects.equals(w.getId(), wish.getId())) continue;
+            if (w.getPriority() == wish.getPriority())
+                throw new PriorityWishException("You have a wish of the same priority " + w.getPriority());
+        }
+    }
+}
