@@ -34,4 +34,9 @@ public class ConfirmationTokenService {
                 token, LocalDateTime.now());
     }
 
+    @Transactional
+    public void deleteToken(Profile profile) {
+        tokenRepository.deleteByProfile(profile);
+    }
+
 }

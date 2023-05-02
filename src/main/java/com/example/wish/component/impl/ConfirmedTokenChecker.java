@@ -18,6 +18,6 @@ public class ConfirmedTokenChecker {
     @Transactional
     @Scheduled(cron = "0 0 0 * * ?")
     public void deleteConfirmedToken() {
-        confirmationTokenRepository.deleteByCreatedAtIsNotNull();
+        confirmationTokenRepository.deleteByConfirmedAtIsNotNull();
     }
 }

@@ -9,6 +9,6 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ForgotPasswordRequest implements Serializable {
+public class EmailRequest implements Serializable {
     private  String email;
 }

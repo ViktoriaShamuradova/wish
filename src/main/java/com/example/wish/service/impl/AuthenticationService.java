@@ -53,7 +53,7 @@ public class AuthenticationService {
     @Value("${generate.uid.suffix.length}")
     private int generateUidSuffixLength;
     @Value("${generate.uid.max.try.count}")
-    private int maxTryCountToGenerateUid;
+    private int maxTryCountToGenerate;
 
     @Transactional
     public ConfirmationTokenDto register(RegisterRequest registerRequest) {
@@ -66,7 +66,6 @@ public class AuthenticationService {
             Profile profile = byEmail.get();
             if (!profile.getEnabled()) {
                 ConfirmationToken token = generateTokenForRegistration(profile);
-                confirmationTokenService.save(token);
                 confirmationTokenService.save(token);
                 notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
 
@@ -86,8 +85,26 @@ public class AuthenticationService {
         }
     }
 
+    /**
+     * use for if token for registration is not valid and user want to percieve one more/
+     * удаляем старый токен. отправляем новый
+     * найти токен по почте и удалить его. Проверить, если почты такой нет/ профиль уже есть в базе данных, вопрос верна ли почта
+     *
+     * @param emailRequest
+     */
     @Transactional
-    public ConfirmationTokenDto createTokenForPassword(ForgotPasswordRequest forgotPasswordRequest) {
+    public void refreshRegistrationToken(EmailRequest emailRequest) {
+        Profile profile = profileRepository.findByEmail(emailRequest.getEmail())
+                .orElseThrow(() -> new ProfileNotFoundException("profile not found with email" + emailRequest.getEmail()));
+        confirmationTokenService.deleteToken(profile);
+
+        ConfirmationToken token = generateTokenForRegistration(profile);
+        confirmationTokenService.save(token);
+        notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
+    }
+
+    @Transactional
+    public ConfirmationTokenDto createTokenForPassword(EmailRequest forgotPasswordRequest) {
         boolean isValidEmail = emailValidator.test(forgotPasswordRequest.getEmail());
         if (!isValidEmail) throw new ProfileNotValidException("email not valid");
 
@@ -103,6 +120,7 @@ public class AuthenticationService {
         return new ConfirmationTokenDto(confirmationToken.getToken());
     }
 
+    @Transactional
     public ProfileDetailsForPasswordDto checkTokenForPassword(ConfirmationTokenDto tokenRequest) {
         ConfirmationToken confirmationToken = confirmationTokenService
                 .find(tokenRequest.getToken())
@@ -124,6 +142,7 @@ public class AuthenticationService {
 
     }
 
+    @Transactional
     public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
         Profile profile = profileRepository.findById(updatePasswordRequest.getProfileId())
                 .orElseThrow(() -> new ProfileExistException("profile not found with id " + updatePasswordRequest.getProfileId()));
@@ -141,7 +160,6 @@ public class AuthenticationService {
 
     }
 
-
     @Transactional
     public AuthResponse confirmRegister(ConfirmationTokenDto tokenRequest) {
         ConfirmationToken confirmationToken = confirmationTokenService
@@ -151,6 +169,7 @@ public class AuthenticationService {
         if (confirmationToken.getConfirmedAt() != null) {
             throw new TokenException("email already confirmed");
         }
+
         LocalDateTime expiredAt = confirmationToken.getExpiresAt();
 
         if (expiredAt.isBefore(LocalDateTime.now())) {
@@ -167,6 +186,8 @@ public class AuthenticationService {
 
         return createAuthResponse(accessToken, refreshToken);
     }
+
+
 
     @Transactional(readOnly = true)
     public AuthResponse authenticate(AuthRequest authRequest) {
@@ -202,7 +223,7 @@ public class AuthenticationService {
 
         for (int i = 0; profileRepository.countByUid(baseUid) > 0; i++) {
             baseUid = DataBuilder.rebuildUidWithRandomSuffix(baseUid, generateUidAlphabet, generateUidSuffixLength);
-            if (i >= maxTryCountToGenerateUid) {
+            if (i >= maxTryCountToGenerate) {
                 throw new CantCompleteClientRequestException("Can't generate unique uid for profile: " + baseUid + ": maxTryCountToGenerateUid detected");
             }
         }
@@ -223,7 +244,7 @@ public class AuthenticationService {
     }
 
     private ConfirmationToken generateTokenForRegistration(Profile profile) {
-        return generateToken(profile, 60);
+        return generateToken(profile, EXPIRE_MINUTES_FOR_REGISTRATION);
     }
 
     private ConfirmationToken generateTokenForPassword(Profile profile) {
@@ -247,7 +268,7 @@ public class AuthenticationService {
                     LocalDateTime.now(),
                     LocalDateTime.now().plusMinutes(minutes),
                     profile);
-            if (i >= maxTryCountToGenerateUid) {
+            if (i >= maxTryCountToGenerate) {
                 throw new CantCompleteClientRequestException("Can't generate unique token for profile: " + randomNumber + ": maxTryCountToGenerateUid detected");
             }
         }
@@ -255,7 +276,7 @@ public class AuthenticationService {
         return confirmationToken;
     }
 
-    public AuthResponse refreshToken(HttpServletRequest request) {
+    public AuthResponse refreshAccessToken(HttpServletRequest request) {
         final String authHeader = request.getHeader("Authorization");
         final String refreshToken;
         final String username;

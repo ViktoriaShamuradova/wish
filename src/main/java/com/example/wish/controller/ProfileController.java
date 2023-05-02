@@ -18,7 +18,7 @@ import javax.validation.Valid;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/boomerang/v1/demo/profile")
+@RequestMapping("/v1/demo/profile")
 @RequiredArgsConstructor
 public class ProfileController {
 

@@ -1,6 +1,7 @@
 package com.example.wish.repository;
 
 import com.example.wish.entity.ConfirmationToken;
+import com.example.wish.entity.Profile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,7 +19,9 @@ public interface ConfirmationTokenRepository extends JpaRepository<ConfirmationT
 
     Optional<ConfirmationToken> findByToken(String token);
 
-    void deleteByCreatedAtIsNotNull();
+    void deleteByConfirmedAtIsNotNull();
+
+    void deleteByProfile(Profile profile);
 
     int countByToken(String token);
 
