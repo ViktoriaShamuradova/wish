@@ -13,7 +13,7 @@ import java.io.Serializable;
 //@FieldMatch(first = "password", second = "confirmPassword", message = "The password fields must match")
 public class RegisterRequest implements Serializable {
 
-    @Email
+
     private final String email;
 
     @PasswordStrength

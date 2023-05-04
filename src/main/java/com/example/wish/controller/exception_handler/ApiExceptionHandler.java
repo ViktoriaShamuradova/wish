@@ -1,14 +1,17 @@
 package com.example.wish.controller.exception_handler;
 
 import com.example.wish.exception.*;
+import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.auth.TokenException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileException;
+import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.exception.wish.WishException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -83,10 +86,40 @@ public class ApiExceptionHandler {
                 response, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(value = {ProfileNotFoundException.class})
+    public ResponseEntity<Object> handleApiRequestException(ProfileNotFoundException exception) {
+        ApiExceptionResponse response = new ApiExceptionResponse(exception.getMessage(),
+                HttpStatus.UNAUTHORIZED,
+                ZonedDateTime.now(ZoneId.of("Z"))
+        );
+        return new ResponseEntity<>(
+                response, HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler(value = {ProfileException.class})
     public ResponseEntity<Object> handleApiRequestException(ProfileException exception) {
         ApiExceptionResponse response = new ApiExceptionResponse(exception.getMessage(),
                 HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z"))
+        );
+        return new ResponseEntity<>(
+                response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(value = {EmailException.class})
+    public ResponseEntity<Object> handleApiRequestException(EmailException exception) {
+        ApiExceptionResponse response = new ApiExceptionResponse(exception.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z"))
+        );
+        return new ResponseEntity<>(
+                response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(value = {MailAuthenticationException.class})
+    public ResponseEntity<Object> handleApiRequestException(MailAuthenticationException exception) {
+        ApiExceptionResponse response = new ApiExceptionResponse(exception.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR,
                 ZonedDateTime.now(ZoneId.of("Z"))
         );
         return new ResponseEntity<>(

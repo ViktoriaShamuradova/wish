@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Component
 @RequiredArgsConstructor
@@ -44,7 +46,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         Map<String, Object> content = new HashMap<>();
         content.put("firstname", profile.getFirstname());
         content.put("token", confirmationToken.getToken());
-        content.put("expireAt",minutes);
+        content.put("expireAt", minutes);
 
         processNotification(profile, "forgot-password-template.flth", content);
     }
@@ -177,7 +179,6 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
 
     }
 
-
     private void processNotification(Profile profile, String templateName, Map<String, Object> model) {
 
         String destinationAddress = notificationSenderService.getDestinationAddress(profile);
@@ -186,10 +187,19 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
             NotificationMessage notificationMessage = notificationTemplateService.createNotificationMessage(templateName, model);
             notificationMessage.setDestinationAddress(destinationAddress);
             notificationMessage.setDestinationName(profile.getFirstname());
-            notificationSenderService.sendNotification(notificationMessage);
-
+            try {
+                Future<Boolean> booleanFuture = notificationSenderService.sendNotification(notificationMessage);
+                Boolean result = booleanFuture.get();
+                if (!result) {
+                    throw new RuntimeException("Failed to send email notification");
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to send email notification");
+            }
         } else {
             LOGGER.error("Notification ignored: destinationAddress is empty for profile " + profile.getUid());
+            throw new RuntimeException("Notification ignored: destinationAddress is empty for profile " + profile.getUid());
         }
     }
 }

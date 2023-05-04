@@ -13,7 +13,9 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 import javax.mail.internet.InternetAddress;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 @RequiredArgsConstructor
 @Component
@@ -36,8 +38,8 @@ public class AsyncEmailNotificationSenderServiceImpl implements NotificationSend
 
 
     @Override
-    public void sendNotification(NotificationMessage message) {
-        executorService.submit(new EmailItem(message, tryCount));
+    public Future<Boolean> sendNotification(NotificationMessage message) {
+        return executorService.submit(new EmailItem(message, tryCount));
     }
 
     @Override
@@ -46,7 +48,7 @@ public class AsyncEmailNotificationSenderServiceImpl implements NotificationSend
     }
 
 
-    private class EmailItem implements Runnable {
+    private class EmailItem implements Callable<Boolean> {
         private final NotificationMessage notificationMessage;
         private int tryCount;
 
@@ -57,7 +59,7 @@ public class AsyncEmailNotificationSenderServiceImpl implements NotificationSend
         }
 
         @Override
-        public void run() {
+        public Boolean call() {
             try {
                 LOGGER.debug("Send a new email to {}", notificationMessage.getDestinationAddress());
                 MimeMessageHelper message = new MimeMessageHelper(javaMailSender.createMimeMessage(), false);
@@ -68,6 +70,7 @@ public class AsyncEmailNotificationSenderServiceImpl implements NotificationSend
                 MimeMailMessage msg = new MimeMailMessage(message);
                 javaMailSender.send(msg.getMimeMessage());
                 LOGGER.debug("Email to {} successful sent", notificationMessage.getDestinationAddress());
+                return true;
             } catch (Exception e) {
                 LOGGER.error("Can't send email to " + notificationMessage.getDestinationAddress() + ": " + e.getMessage(), e);
                 tryCount--;
@@ -76,8 +79,11 @@ public class AsyncEmailNotificationSenderServiceImpl implements NotificationSend
                     executorService.submit(this);
                 } else {
                     LOGGER.error("Email not sent to " + notificationMessage.getDestinationAddress());
+                   // throw new MailAuthenticationException(e.getMessage());
+                    return false;
                 }
             }
+            return false;
         }
     }
 }

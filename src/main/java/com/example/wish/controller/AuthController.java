@@ -61,7 +61,7 @@ public class AuthController {
     }
 
     @PostMapping("/sign-in")
-    @ApiOperation("User registration. A response is returned with an access token and a refresh token if password correct." +
+    @ApiOperation("User authentication. A response is returned with an access token and a refresh token if password correct." +
             "If password or email not correct return response with status bad request")
     public ResponseEntity<AuthResponse> authenticate(@RequestBody @Valid AuthRequest authRequest) {
         return ResponseEntity.ok(authenticationService.authenticate(authRequest));
@@ -86,8 +86,9 @@ public class AuthController {
 
     @PostMapping("/forgot_password")
     @ApiOperation("User received token by email to confirm his email")
-    public ResponseEntity<ConfirmationTokenDto> forgotPassword(@RequestBody @Valid EmailRequest forgotPasswordRequest) {
-        return ResponseEntity.ok(authenticationService.createTokenForPassword(forgotPasswordRequest));
+    public ResponseEntity forgotPassword(@RequestBody @Valid EmailRequest forgotPasswordRequest) {
+        authenticationService.createTokenForPassword(forgotPasswordRequest);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     /**
