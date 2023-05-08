@@ -58,9 +58,8 @@ public class Wish {
     @Column(name = "status")
     private WishStatus status;
 
-    @Lob
     @Column(name = "photo")
-    private byte[] photo;
+    private String photo;
 
     @Column()
     private Date created;

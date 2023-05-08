@@ -58,7 +58,7 @@ public class WishServiceImpl implements WishService {
     private static final long MAX_COUNT_OF_DAYS_TO_CONFIRM_WISH = 7;
 
     @Override
-    public MainScreenProfileDto create(CreateWishRequest wishDto, MultipartFile file) throws ParseException, IOException {
+    public MainScreenProfileDto create(CreateWishRequest wishDto) throws ParseException {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
         Profile profile = profileRepository.findById(currentProfile.getId())
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
@@ -67,7 +67,7 @@ public class WishServiceImpl implements WishService {
 
         validateNewWish(profile, wish);
 
-        wish.setPhoto(ImageUtil.compressImage(file.getBytes()));
+        wish.setPhoto(wishDto.getPhoto());
         wish.setStatus(WishStatus.NEW);
         wish.setCreated(Timestamp.from(Instant.now()));
 
@@ -77,7 +77,7 @@ public class WishServiceImpl implements WishService {
     }
 
     @Override
-    public MainScreenProfileDto update(long id, CreateWishRequest wishDto, MultipartFile file) throws IOException {
+    public MainScreenProfileDto update(long id, CreateWishRequest wishDto) {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
         Profile profile = profileRepository.findById(currentProfile.getId())
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
@@ -96,11 +96,7 @@ public class WishServiceImpl implements WishService {
         wish.setTags(wishDto.getTags());
         wish.setPriority(wishDto.getPriority());
 
-        if (!file.isEmpty()) {
-            wish.setPhoto(ImageUtil.compressImage(file.getBytes()));
-        } else {
-            wish.setPhoto(null);
-        }
+        wish.setPhoto(wishDto.getPhoto());
 
         wishRepository.save(wish);
 
@@ -244,6 +240,12 @@ public class WishServiceImpl implements WishService {
         return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
     }
 
+    @Override
+    public Page<AbstractWishDto> getOwmWishes(Pageable pageable) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        return profileDtoBuilder.findOwmWishesDto(currentProfile.getId(), pageable);
+    }
+
     /**
      * фильтр желаний для других пользователей происходит по статусу new
      * Нужно установить значения для  sql.Date fromDate и sql.Date toDate для дальнейшей фильтрации в репозитории
@@ -354,8 +356,8 @@ public class WishServiceImpl implements WishService {
 
         executingWishRepository.save(executingWish);
 
-        notificationManagerService.sendExecuteWishToExecutor(executingWish.getExecutingProfile());
-        notificationManagerService.sendExecuteWishToOwner(wish.getOwnProfile());
+       // notificationManagerService.sendExecuteWishToExecutor(executingWish.getExecutingProfile());
+     //   notificationManagerService.sendExecuteWishToOwner(wish.getOwnProfile());
 
         return profileDtoBuilder.buildMainScreen(profileRepository.findById(profile.getId()).get());
     }
@@ -392,6 +394,8 @@ public class WishServiceImpl implements WishService {
 
         return storyWish;
     }
+
+
 
     private void validateNewWish(Profile profile, Wish wish) {
         if (!profile.getOwnWishes().isEmpty()) {

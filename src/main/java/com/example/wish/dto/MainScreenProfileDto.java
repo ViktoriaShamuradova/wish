@@ -23,7 +23,7 @@ public class MainScreenProfileDto {
     private double karma;
     private ProfileStatus status;
     private ProfileStatusLevel statusLevel;
-    private byte[] photo;
+    private String photo;
 
     private List<AbstractWishDto> ownWishes;
     private List<ExecutingWishDto> otherWishesInProgress;

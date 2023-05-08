@@ -16,7 +16,7 @@ public class ExecutingWishDto extends AbstractWishDto {
     private Date finish; //когда закончится срок выполнения желания
     private ExecuteStatus executingStatus;
     private long wishId; //id of wish not executing wish id
-    private byte[] executingProfilePhoto;
+    private String executingProfilePhoto;
     private String executingProfileUid;
     private int watchCount;
 }

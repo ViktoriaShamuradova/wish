@@ -23,7 +23,10 @@ import java.util.Set;
 @Repository
 public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificationExecutor<Wish> {
 
+    Page<Wish> findByOwnProfileId(long ownProfileId, Pageable pageable);
+
     List<Wish> findByOwnProfileId(long ownProfileId);
+
 
     Optional<List<Wish>> findByOwnProfileUid(String uid);
 
@@ -85,7 +88,7 @@ public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificat
 
                 if (searchRequest.getToDate() != null && searchRequest.getFromDate() != null) {
 
-                    Predicate predicate = cb.between(profile.get(Profile_.BIRTHDAY), searchRequest.getFromDate(), searchRequest.getToDate() );
+                    Predicate predicate = cb.between(profile.get(Profile_.BIRTHDAY), searchRequest.getFromDate(), searchRequest.getToDate());
                     predicates.add(predicate);
                 }
 

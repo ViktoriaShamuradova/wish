@@ -1,6 +1,7 @@
 package com.example.wish.config;
 
 import com.example.wish.filter.JwtAuthenticationFilter;
+//import com.example.wish.filter.StartEndpointFilter;
 import com.example.wish.service.impl.AuthProfileServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -10,7 +11,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -25,6 +25,8 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
+//    @Autowired
+//    private StartEndpointFilter startEndpointFilter;
     @Autowired
     private AuthenticationManager authenticationManager;
     @Autowired
@@ -53,13 +55,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-         http.csrf().disable()
-      //  http.csrf(AbstractHttpConfigurer::disable)
+        http.csrf().disable()
+                //  http.csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeRequests()
-                    .antMatchers("/v*/demo/auth/**").permitAll() // .antMatchers("/boomerang/v*/demo/auth/sign-up/**") - заработало
-                    .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                    .anyRequest().authenticated()
+                .antMatchers("/v*/demo/auth/**").permitAll()
+                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .anyRequest().authenticated()
                 .and()
                 .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -69,7 +71,16 @@ public class SecurityConfig {
 
         return http.build();
     }
+    //.addFilterBefore(startEndpointFilter, UsernamePasswordAuthenticationFilter.class) // add StartEndpointFilter before JwtAuthenticationFilter
+    //        .authenticationManager(authenticationManager)
+    //        .addFilterAfter(jwtAuthFilter, StartEndpointFilter.class);
 
-
+    // .addFilterBefore(startEndpointFilter, BasicAuthenticationFilter.class) // add this line
+    //                .authenticationManager(authenticationManager)
+    //                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+    // .and()
+    //                .addFilterBefore(startEndpointFilter, UsernamePasswordAuthenticationFilter.class) // add this line
+    //                .authenticationManager(authenticationManager)
+    //                .addFilterAfter(jwtAuthFilter, StartEndpointFilter.class);
 
 }

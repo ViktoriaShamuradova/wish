@@ -34,13 +34,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {  //extends U
                                     @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain
     ) throws ServletException, IOException {
+
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
 
         String username = null;
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
+
         }
         jwt = authHeader.substring(7);
         try {
@@ -49,9 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {  //extends U
         } catch (Exception e) {
             log.error("Error logging in {}", e.getMessage());
             Map<String, String> errors = new HashMap<>();
-            errors.put("error_message", e.getMessage());
+            errors.put("error_message", "token not valid: " + e.getMessage());
             response.setContentType("application/json");
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             new ObjectMapper().writeValue(response.getOutputStream(), errors);
         }
 

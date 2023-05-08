@@ -5,28 +5,30 @@ import com.example.wish.service.impl.AuthenticationService;
 import com.example.wish.service.impl.JwtService;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.net.URI;
 
 @RestController
 @RequestMapping("/v1/demo/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
+    public static final String SIGN_UP_PATH = "/sign-up";
+    public static final String REFRESH_ACCESS_TOKEN_PATH="/token/refresh";
+
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
-    @PostMapping("/sign-up")
+
+    @PostMapping(SIGN_UP_PATH)
     @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
             "The user receives a token by mail. Valid token for an hour." +
             "If the mail is not valid, an exception ProfileNotValidException is thrown" +
@@ -74,13 +76,12 @@ public class AuthController {
     //если он валидный, то фильтр и так проверит
     //разве что на всякий случай соранять в бд. вдруг логика приложения (фильтр) поменяется, а рефреш токен так и будет сохранен
     //если не вернулся ответ, отправить на страницу входа
-    @PostMapping("/token/refresh")
+    @PostMapping(REFRESH_ACCESS_TOKEN_PATH)
     @ApiOperation("If access token not valid need to refresh token to update access token. " +
             "To give a user access to his resource without authentication. " +
             "If refresh token not valid - return response with UNAUTHORIZED status. And user need to sign in")
 
-    public ResponseEntity<AuthResponse> refreshToken(HttpServletRequest request,
-                                                     HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> refreshToken(HttpServletRequest request) {
         return ResponseEntity.ok(authenticationService.refreshAccessToken(request));
     }
 

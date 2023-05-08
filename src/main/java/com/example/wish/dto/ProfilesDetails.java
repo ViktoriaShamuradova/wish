@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,6 +17,7 @@ public class ProfilesDetails {
     private String uid;
     private String firstName;
     private String lastName;
+    private String email;
     private Sex sex;
     private double karma;
     private Integer age;
@@ -26,7 +26,6 @@ public class ProfilesDetails {
     private String city;
     private ProfileStatus status;
     private ProfileStatusLevel statusLevel;
-    private List<AbstractWishDto> ownWishes;
-    private byte[] photo;
+    private String photo;
     private Contact contact;
 }

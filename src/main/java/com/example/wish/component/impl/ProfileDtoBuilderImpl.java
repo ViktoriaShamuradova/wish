@@ -9,10 +9,15 @@ import com.example.wish.repository.ExecutingWishRepository;
 import com.example.wish.repository.FinishedWishRepository;
 import com.example.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Component
@@ -27,7 +32,7 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
 
     @Override
     public MainScreenProfileDto buildMainScreen(Profile profile) {
-        MainScreenProfileDto mainScreenProfileDto = profileMapper.convertToDto(profile);
+        MainScreenProfileDto mainScreenProfileDto = profileMapper.convertToDtoMainScreen(profile);
 
         List<AbstractWishDto> ownWishesDto = findOwmWishesDto(profile.getId());
         mainScreenProfileDto.setOwnWishes(ownWishesDto);
@@ -45,18 +50,14 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
      * @return
      */
     @Override
-    public ProfilesDetails buildProfileDetails(Profile profile, boolean isCurrentProfile) {
+    public ProfilesDetails buildProfileDetails(Profile profile) {
         ProfilesDetails profileDetails = profileMapper.convertToDtoAnother(profile);
-
-        if(!isCurrentProfile) {
-            List<AbstractWishDto> ownWishesDto = findOwnNewWishes(profile.getId());
-            profileDetails.setOwnWishes(ownWishesDto);
-        } else {
-            List<AbstractWishDto> owmWishesDto = findOwmWishesDto(profile.getId());
-            profileDetails.setOwnWishes(owmWishesDto);
-        }
-
         return profileDetails;
+    }
+
+    @Override
+    public ProfileDto buildProfileDto(Profile profile) {
+        return profileMapper.convertToDto(profile);
     }
 
     private List<AbstractWishDto> findOwnNewWishes(Long profileId) {
@@ -68,10 +69,22 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
         return wishDtos;
     }
 
-    private List<AbstractWishDto> findOwmWishesDto(Long profileId) {
+
+    public List<AbstractWishDto> findOwmWishesDto(Long profileId) {
         //находим свои желания
         List<Wish> ownWishes = wishRepository.findByOwnProfileId(profileId);
         //некоторые свои желания могут уже кем-то исполняться. нужно их найти и сделать executedto
+        return convertIfWishInProgress(ownWishes);
+    }
+
+    @Override
+    public Page<AbstractWishDto> findOwmWishesDto(Long profileId, Pageable pageable) {
+        Page<Wish> ownWishes = wishRepository.findByOwnProfileId(profileId, pageable);
+
+        return convertIfWishInProgress(ownWishes);
+    }
+
+    private List<AbstractWishDto> convertIfWishInProgress(List<Wish> ownWishes) {
         List<AbstractWishDto> ownWishesDto = new ArrayList<>();
         for (Wish w : ownWishes) {
             if (w.getStatus() == WishStatus.NEW) {
@@ -83,6 +96,27 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
         }
         return ownWishesDto;
     }
+
+    private Page<AbstractWishDto> convertIfWishInProgress(Page<Wish> ownWishes) {
+        List<AbstractWishDto> ownWishesDto = ownWishes.get()
+                .map(w -> {
+                    if (w.getStatus() == WishStatus.NEW) {
+                        return wishMapper.convertToDto(w);
+                    } else if (w.getStatus() == WishStatus.IN_PROGRESS) {
+                        ExecutingWish executingWish = executingWishRepository.findByWishId(w.getId()).get();
+                        return wishMapper.convertToDto(executingWish);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(ownWishesDto, ownWishes.getPageable(), ownWishes.getTotalElements());
+    }
+
+
+
+
 
     private List<ExecutingWishDto> findExecutingWishesDto(Long profileId) {
         //ищем желания, которые ты исполняешь

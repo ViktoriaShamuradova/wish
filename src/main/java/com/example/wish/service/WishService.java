@@ -5,17 +5,15 @@ import com.example.wish.model.search_request.WishSearchRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.text.ParseException;
 
 
 public interface WishService {
 
-    MainScreenProfileDto create(CreateWishRequest wishDto, MultipartFile file) throws ParseException, IOException;
+    MainScreenProfileDto create(CreateWishRequest wishDto) throws ParseException;
 
-    MainScreenProfileDto update(long wishId, CreateWishRequest wishDto, MultipartFile file) throws ParseException, IOException;
+    MainScreenProfileDto update(long wishId, CreateWishRequest wishDto) throws ParseException;
 
     MainScreenProfileDto finish(long id);
 
@@ -36,4 +34,6 @@ public interface WishService {
     MainScreenProfileDto execute(long wishId, Boolean anonymously);
 
     StoryWishDto getStoryWish();
+
+    Page<AbstractWishDto> getOwmWishes(Pageable pageable);
 }

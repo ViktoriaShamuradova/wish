@@ -2,6 +2,7 @@ package com.example.wish.service.impl;
 
 import com.example.wish.component.ProfileDtoBuilder;
 import com.example.wish.dto.MainScreenProfileDto;
+import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
 import com.example.wish.entity.Profile;
@@ -12,7 +13,6 @@ import com.example.wish.repository.ProfileRepository;
 import com.example.wish.service.ProfileService;
 import com.example.wish.util.DataUtil;
 import com.example.wish.util.DateUtil;
-import com.example.wish.util.ImageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,7 +20,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -39,11 +38,23 @@ public class ProfileServiceImpl implements ProfileService {
     private final ProfileRepository profileRepository;
 
     @Override
-    public MainScreenProfileDto findMain() {
-        log.info("build information for main screen");
+    public MainScreenProfileDto getMainScreen() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
         return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
     }
+
+    /**
+     * information about own profile for main screen
+     */
+    @Override
+    public ProfileDto getProfileDto() {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        return profileDtoBuilder.buildProfileDto(profile);
+    }
+
 
     //если тек юзер, то выводить собственные желания незавершенные
     @Override
@@ -54,9 +65,9 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = profileRepository.findByUid(uid).orElseThrow(() -> new ProfileNotFoundException(uid));
 
         if (currentProfile.getId() == profile.getId()) {
-            return profileDtoBuilder.buildProfileDetails(profile, true);
+            return profileDtoBuilder.buildProfileDetails(profile);
         } else {
-            return profileDtoBuilder.buildProfileDetails(profile, false);
+            return profileDtoBuilder.buildProfileDetails(profile);
         }
     }
 
@@ -81,15 +92,13 @@ public class ProfileServiceImpl implements ProfileService {
         Page<Profile> all = profileRepository.findAll(ProfileRepository.Specs.bySearchRequest(request), pageable);
 
         Stream<ProfilesDetails> searchAnotherProfileStream = all.getContent().stream()
-                .map(pr -> {
-                    return profileDtoBuilder.buildProfileDetails(pr, false);
-                });
+                .map(profileDtoBuilder::buildProfileDetails);
 
         return new PageImpl<>(searchAnotherProfileStream.collect(Collectors.toList()), pageable, all.getTotalElements());
     }
 
     @Override
-    public void update(UpdateProfileDetails updateProfileRequest, MultipartFile file) throws IOException {
+    public void update(UpdateProfileDetails updateProfileRequest) throws IOException {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
 
         Profile profile = profileRepository.findById(currentProfile.getId())
@@ -111,10 +120,8 @@ public class ProfileServiceImpl implements ProfileService {
         profile.setSex(updateProfileRequest.getSex());
         profile.setContact(updateProfileRequest.getContact());
         profile.setBirthday(updateProfileRequest.getBirthday());
+        profile.setPhoto(updateProfileRequest.getPhoto());
 
-        if (!file.isEmpty()) {
-            profile.setPhoto(ImageUtil.compressImage(file.getBytes()));
-        }
         profileRepository.save(profile);
     }
 

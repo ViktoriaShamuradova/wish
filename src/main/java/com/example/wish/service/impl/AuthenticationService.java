@@ -1,6 +1,8 @@
 package com.example.wish.service.impl;
 
 import com.example.wish.component.NotificationManagerService;
+import com.example.wish.controller.AuthController;
+import com.example.wish.controller.ProfileController;
 import com.example.wish.dto.*;
 import com.example.wish.entity.*;
 import com.example.wish.exception.CantCompleteClientRequestException;
@@ -25,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
@@ -55,6 +58,7 @@ public class AuthenticationService {
     private int generateUidSuffixLength;
     @Value("${generate.uid.max.try.count}")
     private int maxTryCountToGenerate;
+
 
     @Transactional
     public ConfirmationTokenDto register(RegisterRequest registerRequest) {
@@ -324,6 +328,8 @@ public class AuthenticationService {
                 .refreshToken(refreshToken)
                 .build();
     }
+
+
 
 
     // private String generateProfileUid(String firstname, String lastname) {

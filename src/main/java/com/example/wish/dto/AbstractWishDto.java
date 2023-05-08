@@ -35,7 +35,7 @@ public class AbstractWishDto {
 
     private Date created;
 
-      private byte[] photo;
+    private String photo;
 
 
     public AbstractWishDto(WishDto wish) {

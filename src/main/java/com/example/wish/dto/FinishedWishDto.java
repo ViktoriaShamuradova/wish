@@ -16,7 +16,7 @@ public class FinishedWishDto extends AbstractWishDto {
     private Long executedProfileId;
     private Double earnKarma;
 
-    private byte[] executedProfilePhoto;
+    private String executedProfilePhoto;
     private String ownProfileFullName;
     private String ownProfileUid;
     private String executedProfileUid;

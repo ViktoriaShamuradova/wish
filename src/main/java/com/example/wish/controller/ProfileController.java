@@ -1,6 +1,9 @@
 package com.example.wish.controller;
 
-import com.example.wish.dto.*;
+import com.example.wish.dto.MainScreenProfileDto;
+import com.example.wish.dto.ProfileDto;
+import com.example.wish.dto.ProfilesDetails;
+import com.example.wish.dto.UpdateProfileDetails;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.service.ProfileService;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +15,6 @@ import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.io.IOException;
@@ -25,20 +27,34 @@ public class ProfileController {
     private final ProfileService profileService;
 
     /**
-     * на свою страницу главного профиля
+     * на главную страницу текущего профиля
+     *
      * @return
      */
-    @RequestMapping(value = "/my-profile")
-    public ResponseEntity<MainScreenProfileDto> getMyProfile() {
-        MainScreenProfileDto mainScreenProfileDto = profileService.findMain();
+    @RequestMapping(value = "/my-profile-main")
+    public ResponseEntity<MainScreenProfileDto> myProfile() {
+        MainScreenProfileDto mainScreenProfileDto = profileService.getMainScreen();
 
         return ResponseEntity.ok(mainScreenProfileDto);
     }
 
     /**
+     * на главную страницу текущего профиля
+     *
+     * @return
+     */
+    @RequestMapping(value = "/my-profile")
+    public ResponseEntity<ProfileDto> getMyProfile() {
+        ProfileDto profileDto = profileService.getProfileDto();
+
+        return ResponseEntity.ok(profileDto);
+    }
+
+    /**
      * возвращает информацию о профиле (о своем и чужом)/
-     *  о своем выводит собственные желания всех статусов(new, in_progress..)
-     *  чужого только в статусе new
+     * о своем выводит собственные желания всех статусов(new, in_progress..)
+     * чужого только в статусе new
+     *
      * @param uid
      * @return
      */
@@ -57,16 +73,15 @@ public class ProfileController {
 
     /**
      * обновляем профиль
+     *
      * @param profileDetails
-     * @param file
      * @return
      * @throws IOException
      */
     @PutMapping(value = "/update")
-    public ResponseEntity update(@RequestPart("profile") @Valid UpdateProfileDetails profileDetails,
-                                 @RequestPart("image") MultipartFile file) throws IOException {
+    public ResponseEntity update(@RequestPart("profile") @Valid UpdateProfileDetails profileDetails) throws IOException {
 
-        profileService.update(profileDetails, file);
+        profileService.update(profileDetails);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 

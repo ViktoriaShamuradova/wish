@@ -36,7 +36,7 @@ public class WishMapperImpl implements WishMapper {
     @Override
     public WishDto convertToDto(Wish wish) {
         WishDto wishDto = modelMapper.map(wish, WishDto.class);
-        wishDto.setPhoto(ImageUtil.decompressImage(wish.getPhoto()));
+        wishDto.setPhoto(wish.getPhoto());
 
         return wishDto;
     }
@@ -61,7 +61,7 @@ public class WishMapperImpl implements WishMapper {
             executingWishDto.setExecutingProfilePhoto(null);
         }
         executingWishDto.setWishId(executingWish.getWish().getId());
-        executingWishDto.setPhoto(ImageUtil.decompressImage(executingWish.getWish().getPhoto()));
+        executingWishDto.setPhoto(executingWish.getWish().getPhoto());
         executingWishDto.setTitle(executingWish.getWish().getTitle());
         executingWishDto.setDescription(executingWish.getWish().getDescription());
         executingWishDto.setPriority(executingWish.getWish().getPriority());
@@ -82,7 +82,7 @@ public class WishMapperImpl implements WishMapper {
         finishedWishDto.setWishId(w.getWish().getId());
 
         finishedWishDto.setEarnKarma(w.getEarnKarma());
-        finishedWishDto.setPhoto(ImageUtil.decompressImage(w.getWish().getPhoto()));
+        finishedWishDto.setPhoto(w.getWish().getPhoto());
         finishedWishDto.setOwnProfileUid(w.getWish().getOwnProfile().getUid());
         finishedWishDto.setOwnProfileFullName(w.getWish().getOwnProfile().getLastname() + " " + w.getWish().getOwnProfile().getFirstname());
 
@@ -93,7 +93,7 @@ public class WishMapperImpl implements WishMapper {
         } else {
             finishedWishDto.setExecutedProfileId(w.getExecutedProfile().getId());
             finishedWishDto.setExecutedProfileUid(w.getExecutedProfile().getUid());
-            finishedWishDto.setExecutedProfilePhoto(ImageUtil.decompressImage(w.getWish().getOwnProfile().getPhoto()));
+            finishedWishDto.setExecutedProfilePhoto(w.getExecutedProfile().getPhoto());
 
         }
 

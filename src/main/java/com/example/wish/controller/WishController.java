@@ -17,27 +17,50 @@ import javax.validation.Valid;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+
 //if service return void  - need ResponseEntity.ok().build() <?>
 @RestController
-@RequestMapping("/boomerang/v1/demo/wish")
+@RequestMapping("/v1/demo/wish")
 @RequiredArgsConstructor
 public class WishController {
 
     private final WishService wishService;
 
+    /**
+     * возвращаем лист, а не page, потому что могут быть только семь желаний
+     *
+     * @return
+     */
+    @GetMapping("/ownWishes")
+    public Page<AbstractWishDto> getOwnWishesInProgress(@SortDefault(sort = "priorityRank", direction = Sort.Direction.ASC) Pageable pageable) {
+        return wishService.getOwmWishes(pageable);
+    }
+
+    /**
+     * используется, когда происходит фильтрация
+     *
+     * @param request
+     * @param pageable
+     * @return
+     */
+    @PostMapping(value = "/search")
+    public Page<SearchWishDto> search(@RequestBody WishSearchRequest request,
+                                      @SortDefault(sort = "priorityRank", direction = Sort.Direction.ASC) Pageable pageable) {
+        return wishService.find(pageable, request);
+    }
+
     @PostMapping(value = "/create")
-    public ResponseEntity<MainScreenProfileDto> createWish(@RequestPart("dto") @Valid CreateWishRequest wishDto, @RequestPart("image") MultipartFile file) throws ParseException, IOException {
+    public ResponseEntity<MainScreenProfileDto> createWish(@RequestPart("dto") @Valid CreateWishRequest wishDto) throws ParseException, IOException {
         URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/boomerang/v1/demo/wish/create").toUriString());
 
-        MainScreenProfileDto mainScreenProfileDto = wishService.create(wishDto, file);
+        MainScreenProfileDto mainScreenProfileDto = wishService.create(wishDto);
         return ResponseEntity.created(uri).body(mainScreenProfileDto);
-        //return ResponseEntity.ok(mainScreenProfileDto);
     }
 
     @PutMapping(value = "/update/{id}")
-    public ResponseEntity<MainScreenProfileDto> updateWish(@PathVariable("id") long id, @RequestPart("dto") @Valid CreateWishRequest wishDto, @RequestPart("image") MultipartFile file) throws ParseException, IOException {
+    public ResponseEntity<MainScreenProfileDto> updateWish(@PathVariable("id") long id, @RequestPart("dto") @Valid CreateWishRequest wishDto) throws ParseException, IOException {
 
-        MainScreenProfileDto mainScreenProfileDto = wishService.update(id, wishDto, file);
+        MainScreenProfileDto mainScreenProfileDto = wishService.update(id, wishDto);
         return ResponseEntity.ok(mainScreenProfileDto);
     }
 
@@ -105,18 +128,6 @@ public class WishController {
         return ResponseEntity.ok(wishService.find(id));
     }
 
-    /**
-     * используется, когда происходит фильтрация
-     *
-     * @param request
-     * @param pageable
-     * @return
-     */
-    @PostMapping(value = "/search")
-    public Page<SearchWishDto> search(@RequestBody WishSearchRequest request,
-                                      @SortDefault(sort = "priorityRank", direction = Sort.Direction.ASC) Pageable pageable) {
-        return wishService.find(pageable, request);
-    }
 
     /**
      * возвращает список всех тегов, количество желаний, желания в статусе new

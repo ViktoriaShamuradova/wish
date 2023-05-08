@@ -20,4 +20,5 @@ public class UpdateProfileDetails {
     private String city;
     private Sex sex;
     private Contact contact;
+    private String photo;
 }

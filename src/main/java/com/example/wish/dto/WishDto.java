@@ -27,6 +27,4 @@ public class WishDto extends AbstractWishDto {
         this.id = wish.getId();
     }
 
-//    private long profileId; //delete
-
 }

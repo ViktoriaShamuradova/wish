@@ -95,9 +95,8 @@ public class Profile implements Serializable {
     @Column()
     private Timestamp created;
 
-    @Lob
     @Column(name = "photo")
-    private byte[] photo;
+    private String photo;
 
     @Embedded
     private Contact contact;
