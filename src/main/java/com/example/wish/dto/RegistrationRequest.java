@@ -1,9 +1,11 @@
 package com.example.wish.dto;
 
 import com.example.wish.annotation.PasswordStrength;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import javax.validation.constraints.Email;
 import java.io.Serializable;
 
 @Getter
@@ -11,8 +13,7 @@ import java.io.Serializable;
 @EqualsAndHashCode
 @ToString
 //@FieldMatch(first = "password", second = "confirmPassword", message = "The password fields must match")
-public class RegisterRequest implements Serializable {
-
+public class RegistrationRequest implements Serializable {
 
     private final String email;
 

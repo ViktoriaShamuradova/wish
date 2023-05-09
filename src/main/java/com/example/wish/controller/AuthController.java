@@ -5,15 +5,16 @@ import com.example.wish.service.impl.AuthenticationService;
 import com.example.wish.service.impl.JwtService;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import java.net.URI;
 
 @RestController
 @RequestMapping("/v1/demo/auth")
@@ -21,26 +22,31 @@ import java.net.URI;
 public class AuthController {
 
     public static final String SIGN_UP_PATH = "/sign-up";
-    public static final String REFRESH_ACCESS_TOKEN_PATH="/token/refresh";
+    public static final String REFRESH_ACCESS_TOKEN_PATH = "/token/refresh";
 
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
-
-    @PostMapping(SIGN_UP_PATH)
-    @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
-            "The user receives a token by mail. Valid token for an hour." +
-            "If the mail is not valid, an exception ProfileNotValidException is thrown" +
-            "and a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
-            "If email already exist and user enabled, an exception ProfileExistException is throw" +
-            "and a response is returned with status BAD_REQUEST with message \"email already exists\"" +
-            "if service can't generate unique token for profile or send message with token by mail: " +
-            "CantCompleteClientRequestException is throw and " +
-            "response is returned with status INTERNAL_SERVER_ERROR and message \"cant complete client request\"")
-    public ResponseEntity register(@RequestBody @Valid RegisterRequest registerRequest) {
-        authenticationService.register(registerRequest);
+    /**
+     * send message to verify email.
+     * it url also use to send message again
+     * @param emailVerificationRequest
+     * @return
+     */
+    @PostMapping("/email-verification")
+    public ResponseEntity emailVerification(@RequestBody @Valid EmailVerificationRequest emailVerificationRequest) {
+        authenticationService.verifyEmail(emailVerificationRequest);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/sign-up")
+    @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
+            "If the mail is not valid - a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
+            "If email already exist - a response is returned with status BAD_REQUEST with message \"email already exists\"")
+    public ResponseEntity register(@RequestBody @Valid RegistrationRequest registerRequest) {
+        authenticationService.register(registerRequest);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @PostMapping("/sign-up/confirm")
@@ -113,3 +119,15 @@ public class AuthController {
     }
 
 }
+
+
+//    @PostMapping("/sign-up")
+//    @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
+//            "The user receives a token by mail. Valid token for an hour." +
+//            "If the mail is not valid, an exception ProfileNotValidException is thrown" +
+//            "and a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
+//            "If email already exist and user enabled, an exception ProfileExistException is throw" +
+//            "and a response is returned with status BAD_REQUEST with message \"email already exists\"" +
+//            "if service can't generate unique token for profile or send message with token by mail: " +
+//            "CantCompleteClientRequestException is throw and " +
+//            "response is returned with status INTERNAL_SERVER_ERROR and message \"cant complete client request\"")

@@ -32,4 +32,6 @@ public interface NotificationManagerService {
     void sendConfirmWishFailedToOwner(Profile ownProfile);
 
     void sendConfirmationTokenForPassword(Profile profile, ConfirmationToken confirmationToken, int minutes);
+
+    void sendOnePasswordForEmailVerification(String email, String oneTimePassword, int minutes);
 }

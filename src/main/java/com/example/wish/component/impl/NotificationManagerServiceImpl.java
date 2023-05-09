@@ -52,6 +52,18 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
     }
 
     @Override
+    public void sendOnePasswordForEmailVerification(String email, String oneTimePassword, int minutes) {
+        LOGGER.debug("Send message to verify email" + email);
+
+        Map<String, Object> content = new HashMap<>();
+        content.put("token", oneTimePassword);
+        content.put("expireAt", minutes);
+
+        processNotification(email, "one-time-password-registration-template.flth", content);
+
+    }
+
+    @Override
     public void sendExecuteWishToOwner(Profile ownProfile) {
         LOGGER.debug("Send to owner information about executing wish" + ownProfile.getEmail());
 
@@ -123,9 +135,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         Map<String, Object> content = new HashMap<>();
         content.put("firstname", executingProfile.getFirstname());
 
-
         processNotification(executingProfile, "cancel-execution-wish-executor-template.flth", content);
-
     }
 
     @Override
@@ -135,7 +145,6 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         content.put("firstname", ownProfile.getFirstname());
 
         processNotification(ownProfile, "cancel-execution-wish-owner-template.flth", content);
-
     }
 
     @Override
@@ -177,6 +186,27 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
 
         processNotification(executingWish.getExecutingProfile(), "finish-failed-wish-owner-template.flth", content);
 
+    }
+
+    private void processNotification(String email, String template, Map<String, Object> model) {
+
+        if (StringUtils.isNotBlank(email)) {
+            NotificationMessage notificationMessage = notificationTemplateService.createNotificationMessage(template, model);
+            notificationMessage.setDestinationAddress(email);
+            try {
+                Future<Boolean> booleanFuture = notificationSenderService.sendNotification(notificationMessage);
+                Boolean result = booleanFuture.get();
+                if (!result) {
+                    throw new RuntimeException("Failed to send email notification");
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to send email notification");
+            }
+        } else {
+            LOGGER.error("Notification ignored: destinationAddress is not exist" + email);
+            throw new RuntimeException("Notification ignored: destinationAddress is not exist" + email);
+        }
     }
 
     private void processNotification(Profile profile, String templateName, Map<String, Object> model) {

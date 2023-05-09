@@ -106,7 +106,10 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
         notificationMessageForgotPassword.setSubject("Forgot password");
         notificationsTemplates.put("forgot-password-template.flth", notificationMessageForgotPassword);
 
-        //return beanFactory.getBeansOfType(NotificationMessage.class);
+        NotificationMessage notificationMessageVerifyEmail = new NotificationMessage();
+        notificationMessageVerifyEmail.setSubject("Confirm your email");
+        notificationsTemplates.put("one-time-password-registration-template.flth", notificationMessageVerifyEmail);
+
         return notificationsTemplates;
     }
 }

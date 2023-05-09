@@ -1,14 +1,15 @@
 package com.example.wish.service.impl;
 
 import com.example.wish.component.NotificationManagerService;
-import com.example.wish.controller.AuthController;
-import com.example.wish.controller.ProfileController;
 import com.example.wish.dto.*;
 import com.example.wish.entity.*;
 import com.example.wish.exception.CantCompleteClientRequestException;
 import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.auth.TokenException;
-import com.example.wish.exception.profile.*;
+import com.example.wish.exception.profile.CurrentProfileNotFoundException;
+import com.example.wish.exception.profile.ProfileException;
+import com.example.wish.exception.profile.ProfileExistException;
+import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.repository.ProfileRepository;
 import com.example.wish.util.DataBuilder;
@@ -27,7 +28,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
@@ -59,38 +59,42 @@ public class AuthenticationService {
     @Value("${generate.uid.max.try.count}")
     private int maxTryCountToGenerate;
 
-
     @Transactional
-    public ConfirmationTokenDto register(RegisterRequest registerRequest) {
+    public void verifyEmail(EmailVerificationRequest emailVerificationRequest) {
+        boolean isValidEmail = emailValidator.test(emailVerificationRequest.getEmail());
+        if (!isValidEmail) throw new EmailException(emailVerificationRequest.getEmail());
+        Optional<Profile> byEmail = profileRepository.findByEmail(emailVerificationRequest.getEmail());
+
+        if (byEmail.isPresent()) {
+            throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
+        }
+
+        notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
+                emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
+    }
+
+    /**
+     * before creating profile user confirmed his email
+     *
+     * @param registerRequest
+     * @return
+     */
+    @Transactional
+    public void register(RegistrationRequest registerRequest) {
         boolean isValidEmail = emailValidator.test(registerRequest.getEmail());
         if (!isValidEmail) throw new EmailException(registerRequest.getEmail());
 
         Optional<Profile> byEmail = profileRepository.findByEmail(registerRequest.getEmail());
 
         if (byEmail.isPresent()) {
-            Profile profile = byEmail.get();
-            if (!profile.getEnabled()) {
-                ConfirmationToken token = generateTokenForRegistration(profile);
-                confirmationTokenService.save(token);
-                //  notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
-                LOGGER.info(token.getToken());
-                return new ConfirmationTokenDto(token.getToken());
-            } else {
-                throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
-            }
+            throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
         } else {
             var profile = createProfile(registerRequest);
-
+            profile.setEnabled(true);
             profileRepository.save(profile);
-            ConfirmationToken token = generateTokenForRegistration(profile);
-            confirmationTokenService.save(token);
-
-            LOGGER.info(token.getToken());
-
-            // notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
-            return new ConfirmationTokenDto(token.getToken());
         }
     }
+
 
     /**
      * use for if token for registration is not valid and user want to percieve one more/
@@ -252,33 +256,41 @@ public class AuthenticationService {
         return generateToken(profile, EXPIRE_MINUTES_FOR_REGISTRATION);
     }
 
+    private ConfirmationToken buildTokenForRegistration(Profile profile, String otp) {
+        return createConfirmationToken(profile, otp, EXPIRE_MINUTES_FOR_REGISTRATION);
+    }
+
     private ConfirmationToken generateTokenForPassword(Profile profile) {
         return generateToken(profile, 10);
     }
 
+    private int generateRandomNumber() {
+        Random random = new Random();
+        return random.nextInt(90000) + 10000;
+    }
+
     private ConfirmationToken generateToken(Profile profile, int minutes) {
         // String token = UUID.randomUUID().toString();
-        Random random = new Random();
-        int randomNumber = random.nextInt(90000) + 10000; //five digits
-        ConfirmationToken confirmationToken = new ConfirmationToken(
-                Integer.toString(randomNumber),
-                LocalDateTime.now(),
-                LocalDateTime.now().plusMinutes(minutes),
-                profile);
+
+        int randomNumber = generateRandomNumber(); //five digits
+        ConfirmationToken confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
 
         for (int i = 0; confirmationTokenService.countByToken(confirmationToken.getToken()) > 0; i++) {
-            randomNumber = random.nextInt(90000) + 10000;
-            confirmationToken = new ConfirmationToken(
-                    Integer.toString(randomNumber),
-                    LocalDateTime.now(),
-                    LocalDateTime.now().plusMinutes(minutes),
-                    profile);
+            randomNumber = generateRandomNumber();
+            confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
             if (i >= maxTryCountToGenerate) {
                 throw new CantCompleteClientRequestException("Can't generate unique token for profile: " + randomNumber + ": maxTryCountToGenerateUid detected");
             }
         }
-
         return confirmationToken;
+    }
+
+    private ConfirmationToken createConfirmationToken(Profile profile, String code, int minutes) {
+        return new ConfirmationToken(
+                code,
+                LocalDateTime.now(),
+                LocalDateTime.now().plusMinutes(minutes),
+                profile);
     }
 
     public AuthResponse refreshAccessToken(HttpServletRequest request) {
@@ -306,7 +318,7 @@ public class AuthenticationService {
         return null;
     }
 
-    private Profile createProfile(RegisterRequest registerRequest) {
+    private Profile createProfile(RegistrationRequest registerRequest) {
         return Profile.builder()
                 .active(true)
                 .uid(generateProfileUid(registerRequest.getEmail()))
@@ -317,8 +329,8 @@ public class AuthenticationService {
                 .statusLevel(ProfileStatusLevel.PERSON)
                 .created(new Timestamp(System.currentTimeMillis()))
                 .karma(0)
-                .locked(false) //value before verification email. user need to confirm email
-                .enabled(false)
+                .locked(false)
+                .enabled(false) //value before verification email. user need to confirm email
                 .build();
     }
 
@@ -329,20 +341,53 @@ public class AuthenticationService {
                 .build();
     }
 
-
-
-
-    // private String generateProfileUid(String firstname, String lastname) {
-    //        String baseUid = DataBuilder.buildProfileUid(firstname, lastname);//firstname-lastname
-    //        //если не сущ, то возвращаем только что сгенерированный uid
-    //        //если существует, то к baseuid добавляем рандомную строку
-    //
-    //        for (int i = 0; profileRepository.countByUid(baseUid) > 0; i++) {
-    //            baseUid = DataBuilder.rebuildUidWithRandomSuffix(baseUid, generateUidAlphabet, generateUidSuffixLength);
-    //            if (i >= maxTryCountToGenerateUid) { //выбрасываем исключение, когда слишком много генерировался uid
-    //                throw new CantCompleteClientRequestException("Can't generate unique uid for profile: " + baseUid + ": maxTryCountToGenerateUid detected");
-    //            }
-    //        }
-    //        return baseUid;
-    //    }
 }
+
+//
+//@Transactional
+//public ConfirmationTokenDto registerProfileCreateAndSendEmailForVerification(RegistrationRequest registerRequest) {
+//    boolean isValidEmail = emailValidator.test(registerRequest.getEmail());
+//    if (!isValidEmail) throw new EmailException(registerRequest.getEmail());
+//
+//    Optional<Profile> byEmail = profileRepository.findByEmail(registerRequest.getEmail());
+//
+//    if (byEmail.isPresent()) {
+//        Profile profile = byEmail.get();
+//        if (!profile.getEnabled()) {
+//            ConfirmationToken token = generateTokenForRegistration(profile);
+//            confirmationTokenService.save(token);
+//            notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
+//            LOGGER.info(token.getToken());
+//            return new ConfirmationTokenDto(token.getToken());
+//        } else {
+//            throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
+//        }
+//    } else {
+//        var profile = createProfile(registerRequest);
+//
+//        profileRepository.save(profile);
+//        ConfirmationToken token = generateTokenForRegistration(profile);
+//        confirmationTokenService.save(token);
+//
+//        LOGGER.info(token.getToken());
+//
+//        notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
+//        return new ConfirmationTokenDto(token.getToken());
+//    }
+//}
+
+//
+
+// private String generateProfileUid(String firstname, String lastname) {
+//        String baseUid = DataBuilder.buildProfileUid(firstname, lastname);//firstname-lastname
+//        //если не сущ, то возвращаем только что сгенерированный uid
+//        //если существует, то к baseuid добавляем рандомную строку
+//
+//        for (int i = 0; profileRepository.countByUid(baseUid) > 0; i++) {
+//            baseUid = DataBuilder.rebuildUidWithRandomSuffix(baseUid, generateUidAlphabet, generateUidSuffixLength);
+//            if (i >= maxTryCountToGenerateUid) { //выбрасываем исключение, когда слишком много генерировался uid
+//                throw new CantCompleteClientRequestException("Can't generate unique uid for profile: " + baseUid + ": maxTryCountToGenerateUid detected");
+//            }
+//        }
+//        return baseUid;
+//    }
