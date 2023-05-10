@@ -11,4 +11,6 @@ public class EmailVerificationRequest {
     private final String email;
     //сюда можно аннотацию проверки на пятизначность
     private final String otp;
+
+    private final boolean isRegistration;
 }

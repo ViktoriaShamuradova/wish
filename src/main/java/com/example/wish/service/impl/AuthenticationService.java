@@ -2,7 +2,10 @@ package com.example.wish.service.impl;
 
 import com.example.wish.component.NotificationManagerService;
 import com.example.wish.dto.*;
-import com.example.wish.entity.*;
+import com.example.wish.entity.Profile;
+import com.example.wish.entity.ProfileStatus;
+import com.example.wish.entity.ProfileStatusLevel;
+import com.example.wish.entity.Role;
 import com.example.wish.exception.CantCompleteClientRequestException;
 import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.auth.TokenException;
@@ -31,9 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +44,6 @@ public class AuthenticationService {
     private final ProfileRepository profileRepository;
     private final EmailValidator emailValidator;
     private final JwtService jwtService;
-    private final ConfirmationTokenService confirmationTokenService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final NotificationManagerService notificationManagerService;
@@ -65,12 +65,19 @@ public class AuthenticationService {
         if (!isValidEmail) throw new EmailException(emailVerificationRequest.getEmail());
         Optional<Profile> byEmail = profileRepository.findByEmail(emailVerificationRequest.getEmail());
 
-        if (byEmail.isPresent()) {
-            throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
+        if (emailVerificationRequest.isRegistration()) {
+            if (byEmail.isPresent()) {
+                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
+            }
+            notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
+                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
+        } else {
+            if (byEmail.isEmpty()) {
+                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " does not exists");
+            }
+            notificationManagerService.sendOnePasswordForResetPassword(emailVerificationRequest.getEmail(),
+                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_PASSWORD);
         }
-
-        notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
-                emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
     }
 
     /**
@@ -95,67 +102,10 @@ public class AuthenticationService {
         }
     }
 
-
-    /**
-     * use for if token for registration is not valid and user want to percieve one more/
-     * удаляем старый токен. отправляем новый
-     * найти токен по почте и удалить его. Проверить, если почты такой нет/ профиль уже есть в базе данных
-     *
-     * @param emailRequest
-     */
-    @Transactional
-    public void refreshRegistrationToken(EmailRequest emailRequest) {
-        Profile profile = profileRepository.findByEmail(emailRequest.getEmail())
-                .orElseThrow(() -> new ProfileNotFoundException(emailRequest.getEmail()));
-        confirmationTokenService.deleteToken(profile);
-
-        ConfirmationToken token = generateTokenForRegistration(profile);
-        confirmationTokenService.save(token);
-        LOGGER.info("Token " + token.getToken());
-        // notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
-    }
-
-    @Transactional
-    public ConfirmationTokenDto createTokenForPassword(EmailRequest forgotPasswordRequest) {
-        boolean isValidEmail = emailValidator.test(forgotPasswordRequest.getEmail());
-        if (!isValidEmail) throw new EmailException(forgotPasswordRequest.getEmail());
-
-        Profile profile = profileRepository.findByEmail(forgotPasswordRequest.getEmail())
-                .orElseThrow(() -> new ProfileNotFoundException(forgotPasswordRequest.getEmail()));
-
-        ConfirmationToken confirmationToken = generateTokenForPassword(profile);
-        LOGGER.info("token " + confirmationToken.getToken());
-        confirmationTokenService.save(confirmationToken);
-
-        //notificationManagerService.sendConfirmationTokenForPassword(profile, confirmationToken, EXPIRE_MINUTES_FOR_PASSWORD);
-
-        return new ConfirmationTokenDto(confirmationToken.getToken());
-    }
-
-    @Transactional
-    public ProfileDetailsForPasswordDto checkTokenForPassword(ConfirmationTokenDto tokenRequest) {
-        ConfirmationToken confirmationToken = confirmationTokenService
-                .find(tokenRequest.getToken())
-                .orElseThrow(() -> new TokenException("token not found"));
-
-        if (confirmationToken.getConfirmedAt() != null) {
-            throw new TokenException("token already confirmed");
-        }
-
-        LocalDateTime expiredAt = confirmationToken.getExpiresAt();
-
-        if (expiredAt.isBefore(LocalDateTime.now())) {
-            throw new TokenException("token expired");
-        }
-
-        confirmationTokenService.setConfirmedAt(tokenRequest.getToken());
-        return new ProfileDetailsForPasswordDto(confirmationToken.getProfile().getId());
-    }
-
     @Transactional
     public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
-        Profile profile = profileRepository.findById(updatePasswordRequest.getProfileId())
-                .orElseThrow(() -> new ProfileExistException("profile not found with id " + updatePasswordRequest.getProfileId()));
+        Profile profile = profileRepository.findByEmail(updatePasswordRequest.getEmail())
+                .orElseThrow(() -> new ProfileException("email " + updatePasswordRequest.getEmail() + " not found"));
 
         profile.setPassword(passwordEncoder.encode(updatePasswordRequest.getPassword()));
 
@@ -167,36 +117,7 @@ public class AuthenticationService {
         var refreshToken = jwtService.generateRefreshToken(currentProfile);
 
         return createAuthResponse(accessToken, refreshToken);
-
     }
-
-    @Transactional
-    public AuthResponse confirmRegister(ConfirmationTokenDto tokenRequest) {
-        ConfirmationToken confirmationToken = confirmationTokenService
-                .find(tokenRequest.getToken())
-                .orElseThrow(() -> new TokenException("token not found"));
-
-        if (confirmationToken.getConfirmedAt() != null) {
-            throw new TokenException("email already confirmed");
-        }
-
-        LocalDateTime expiredAt = confirmationToken.getExpiresAt();
-
-        if (expiredAt.isBefore(LocalDateTime.now())) {
-            throw new TokenException("token expired");
-        }
-
-        confirmationTokenService.setConfirmedAt(tokenRequest.getToken());
-        profileRepository.enableProfile(confirmationToken.getProfile().getEmail());
-
-        CurrentProfile currentProfile = new CurrentProfile(confirmationToken.getProfile());
-
-        var accessToken = jwtService.generateToken(currentProfile);
-        var refreshToken = jwtService.generateRefreshToken(currentProfile);
-
-        return createAuthResponse(accessToken, refreshToken);
-    }
-
 
     @Transactional(readOnly = true)
     public AuthResponse authenticate(AuthRequest authRequest) {
@@ -252,47 +173,6 @@ public class AuthenticationService {
         }
     }
 
-    private ConfirmationToken generateTokenForRegistration(Profile profile) {
-        return generateToken(profile, EXPIRE_MINUTES_FOR_REGISTRATION);
-    }
-
-    private ConfirmationToken buildTokenForRegistration(Profile profile, String otp) {
-        return createConfirmationToken(profile, otp, EXPIRE_MINUTES_FOR_REGISTRATION);
-    }
-
-    private ConfirmationToken generateTokenForPassword(Profile profile) {
-        return generateToken(profile, 10);
-    }
-
-    private int generateRandomNumber() {
-        Random random = new Random();
-        return random.nextInt(90000) + 10000;
-    }
-
-    private ConfirmationToken generateToken(Profile profile, int minutes) {
-        // String token = UUID.randomUUID().toString();
-
-        int randomNumber = generateRandomNumber(); //five digits
-        ConfirmationToken confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
-
-        for (int i = 0; confirmationTokenService.countByToken(confirmationToken.getToken()) > 0; i++) {
-            randomNumber = generateRandomNumber();
-            confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
-            if (i >= maxTryCountToGenerate) {
-                throw new CantCompleteClientRequestException("Can't generate unique token for profile: " + randomNumber + ": maxTryCountToGenerateUid detected");
-            }
-        }
-        return confirmationToken;
-    }
-
-    private ConfirmationToken createConfirmationToken(Profile profile, String code, int minutes) {
-        return new ConfirmationToken(
-                code,
-                LocalDateTime.now(),
-                LocalDateTime.now().plusMinutes(minutes),
-                profile);
-    }
-
     public AuthResponse refreshAccessToken(HttpServletRequest request) {
         final String authHeader = request.getHeader("Authorization");
         final String refreshToken;
@@ -343,6 +223,36 @@ public class AuthenticationService {
 
 }
 
+
+//  private int generateRandomNumber() {
+//        Random random = new Random();
+//        return random.nextInt(90000) + 10000;
+//    }
+
+//    private ConfirmationToken createConfirmationToken(Profile profile, String code, int minutes) {
+//        return new ConfirmationToken(
+//                code,
+//                LocalDateTime.now(),
+//                LocalDateTime.now().plusMinutes(minutes),
+//                profile);
+//    }
+//
+//private ConfirmationToken generateToken(Profile profile, int minutes) {
+//    // String token = UUID.randomUUID().toString();
+//
+//    int randomNumber = generateRandomNumber(); //five digits
+//    ConfirmationToken confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
+//
+//    for (int i = 0; confirmationTokenService.countByToken(confirmationToken.getToken()) > 0; i++) {
+//        randomNumber = generateRandomNumber();
+//        confirmationToken = createConfirmationToken(profile, Integer.toString(randomNumber), minutes);
+//        if (i >= maxTryCountToGenerate) {
+//            throw new CantCompleteClientRequestException("Can't generate unique token for profile: " + randomNumber + ": maxTryCountToGenerateUid detected");
+//        }
+//    }
+//    return confirmationToken;
+//}
+
 //
 //@Transactional
 //public ConfirmationTokenDto registerProfileCreateAndSendEmailForVerification(RegistrationRequest registerRequest) {
@@ -376,7 +286,9 @@ public class AuthenticationService {
 //    }
 //}
 
-//
+//  private ConfirmationToken generateTokenForPassword(Profile profile) {
+//        return generateToken(profile, 10);
+//    }
 
 // private String generateProfileUid(String firstname, String lastname) {
 //        String baseUid = DataBuilder.buildProfileUid(firstname, lastname);//firstname-lastname
@@ -390,4 +302,96 @@ public class AuthenticationService {
 //            }
 //        }
 //        return baseUid;
+//    }
+
+
+// /**
+//     * use for if token for registration is not valid and user want to percieve one more/
+//     * удаляем старый токен. отправляем новый
+//     * найти токен по почте и удалить его. Проверить, если почты такой нет/ профиль уже есть в базе данных
+//     *
+//     * @param emailRequest
+//     */
+//    @Transactional
+//    public void refreshRegistrationToken(EmailRequest emailRequest) {
+//        Profile profile = profileRepository.findByEmail(emailRequest.getEmail())
+//                .orElseThrow(() -> new ProfileNotFoundException(emailRequest.getEmail()));
+//        confirmationTokenService.deleteToken(profile);
+//
+//        ConfirmationToken token = generateTokenForRegistration(profile);
+//        confirmationTokenService.save(token);
+//        LOGGER.info("Token " + token.getToken());
+//        // notificationManagerService.sendConfirmationTokenForRegistration(profile, token);
+//    }
+
+//  @Transactional
+//    public ProfileDetailsForPasswordDto checkTokenForPassword(ConfirmationTokenDto tokenRequest) {
+//        ConfirmationToken confirmationToken = confirmationTokenService
+//                .find(tokenRequest.getToken())
+//                .orElseThrow(() -> new TokenException("token not found"));
+//
+//        if (confirmationToken.getConfirmedAt() != null) {
+//            throw new TokenException("token already confirmed");
+//        }
+//
+//        LocalDateTime expiredAt = confirmationToken.getExpiresAt();
+//
+//        if (expiredAt.isBefore(LocalDateTime.now())) {
+//            throw new TokenException("token expired");
+//        }
+//
+//        confirmationTokenService.setConfirmedAt(tokenRequest.getToken());
+//        return new ProfileDetailsForPasswordDto(confirmationToken.getProfile().getId());
+//    }
+
+// private ConfirmationToken generateTokenForRegistration(Profile profile) {
+//        return generateToken(profile, EXPIRE_MINUTES_FOR_REGISTRATION);
+//    }
+//
+//    private ConfirmationToken buildTokenForRegistration(Profile profile, String otp) {
+//        return createConfirmationToken(profile, otp, EXPIRE_MINUTES_FOR_REGISTRATION);
+//    }
+
+//   @Transactional
+//    public ConfirmationTokenDto createTokenForPassword(EmailRequest forgotPasswordRequest) {
+//        boolean isValidEmail = emailValidator.test(forgotPasswordRequest.getEmail());
+//        if (!isValidEmail) throw new EmailException(forgotPasswordRequest.getEmail());
+//
+//        Profile profile = profileRepository.findByEmail(forgotPasswordRequest.getEmail())
+//                .orElseThrow(() -> new ProfileNotFoundException(forgotPasswordRequest.getEmail()));
+//
+//        ConfirmationToken confirmationToken = generateTokenForPassword(profile);
+//        LOGGER.info("token " + confirmationToken.getToken());
+//        confirmationTokenService.save(confirmationToken);
+//
+//        //notificationManagerService.sendConfirmationTokenForPassword(profile, confirmationToken, EXPIRE_MINUTES_FOR_PASSWORD);
+//
+//        return new ConfirmationTokenDto(confirmationToken.getToken());
+//    }
+
+// @Transactional
+//    public AuthResponse confirmRegister(ConfirmationTokenDto tokenRequest) {
+//        ConfirmationToken confirmationToken = confirmationTokenService
+//                .find(tokenRequest.getToken())
+//                .orElseThrow(() -> new TokenException("token not found"));
+//
+//        if (confirmationToken.getConfirmedAt() != null) {
+//            throw new TokenException("email already confirmed");
+//        }
+//
+//        LocalDateTime expiredAt = confirmationToken.getExpiresAt();
+//
+//        if (expiredAt.isBefore(LocalDateTime.now())) {
+//            throw new TokenException("token expired");
+//        }
+//
+//        confirmationTokenService.setConfirmedAt(tokenRequest.getToken());
+//        profileRepository.enableProfile(confirmationToken.getProfile().getEmail());
+//
+//        CurrentProfile currentProfile = new CurrentProfile(confirmationToken.getProfile());
+//
+//        var accessToken = jwtService.generateToken(currentProfile);
+//        var refreshToken = jwtService.generateRefreshToken(currentProfile);
+//
+//        return createAuthResponse(accessToken, refreshToken);
 //    }

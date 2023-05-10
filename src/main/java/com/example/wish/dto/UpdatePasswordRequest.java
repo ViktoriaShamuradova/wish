@@ -12,7 +12,7 @@ import lombok.ToString;
 @ToString
 public class UpdatePasswordRequest {
 
-    private final long profileId;
+    private final String email;
 
     @PasswordStrength
     private final String password;

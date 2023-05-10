@@ -64,6 +64,17 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
     }
 
     @Override
+    public void sendOnePasswordForResetPassword(String email, String otp, int expireMinutesForPassword) {
+        LOGGER.debug("Send message to verify email for password reset" + email);
+
+        Map<String, Object> content = new HashMap<>();
+        content.put("token", otp);
+        content.put("expireAt", expireMinutesForPassword);
+
+        processNotification(email, "one-time-password-reset-password-template.flth", content);
+    }
+
+    @Override
     public void sendExecuteWishToOwner(Profile ownProfile) {
         LOGGER.debug("Send to owner information about executing wish" + ownProfile.getEmail());
 

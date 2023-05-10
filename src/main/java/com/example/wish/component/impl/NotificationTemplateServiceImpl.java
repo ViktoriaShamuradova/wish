@@ -110,6 +110,10 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
         notificationMessageVerifyEmail.setSubject("Confirm your email");
         notificationsTemplates.put("one-time-password-registration-template.flth", notificationMessageVerifyEmail);
 
+        NotificationMessage notificationMessageVerifyEmailForRestPassword = new NotificationMessage();
+        notificationMessageVerifyEmailForRestPassword.setSubject("Confirm your email");
+        notificationsTemplates.put("one-time-password-reset-password-template.flth", notificationMessageVerifyEmailForRestPassword);
+
         return notificationsTemplates;
     }
 }

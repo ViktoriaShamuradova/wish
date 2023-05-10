@@ -34,4 +34,6 @@ public interface NotificationManagerService {
     void sendConfirmationTokenForPassword(Profile profile, ConfirmationToken confirmationToken, int minutes);
 
     void sendOnePasswordForEmailVerification(String email, String oneTimePassword, int minutes);
+
+    void sendOnePasswordForResetPassword(String email, String otp, int expireMinutesForPassword);
 }

@@ -30,7 +30,7 @@ public class AuthController {
 
     /**
      * send message to verify email.
-     * it url also use to send message again
+     * it url also use to send message again, for registration, forgot password
      * @param emailVerificationRequest
      * @return
      */
@@ -49,25 +49,6 @@ public class AuthController {
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
-    @PostMapping("/sign-up/confirm")
-    @ApiOperation("User registration. request - token, to confirm user's email. Return a response with status OK " +
-            "and with an access token and a refresh token." +
-            "If the token is not valid (which means we cannot find it in the database), " +
-            "a response is received with the UNAUTHORIZED status and the message \"token not found.\"" +
-            "If the token is already confirmed," +
-            "a response is received with the status UNAUTHORIZED and the message \"email already confirmed\"" +
-            "If the token has expired, a response is returned with a status UNAUTHORIZED with message \"token expired\"." +
-            "If the token is valid, then a response with tokens is returned.")
-    public ResponseEntity<AuthResponse> confirmRegister(@RequestBody ConfirmationTokenDto confirmationToken) {
-        return ResponseEntity.ok(authenticationService.confirmRegister(confirmationToken));
-    }
-
-    @PostMapping("/sign-up/refreshToken")
-    public ResponseEntity refreshToken(@RequestBody @Valid EmailRequest emailRequest) {
-        authenticationService.refreshRegistrationToken(emailRequest);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
     @PostMapping("/sign-in")
     @ApiOperation("User authentication. A response is returned with an access token and a refresh token if password correct." +
             "If password or email not correct return response with status bad request")
@@ -75,13 +56,7 @@ public class AuthController {
         return ResponseEntity.ok(authenticationService.authenticate(authRequest));
     }
 
-
-    //сюда должен придти рефреш токен, чтобы измнить аксесс токен
-    //рефреш токен и так проверяется в фильтре -  если он не валидный в фильтре, значит нет его и в бд
-    //если рефреш токен не валидный, то зачем идти дальше в бд?
-    //если он валидный, то фильтр и так проверит
-    //разве что на всякий случай соранять в бд. вдруг логика приложения (фильтр) поменяется, а рефреш токен так и будет сохранен
-    //если не вернулся ответ, отправить на страницу входа
+    //хранить в бд рефреш токен или нет?
     @PostMapping(REFRESH_ACCESS_TOKEN_PATH)
     @ApiOperation("If access token not valid need to refresh token to update access token. " +
             "To give a user access to his resource without authentication. " +
@@ -91,28 +66,8 @@ public class AuthController {
         return ResponseEntity.ok(authenticationService.refreshAccessToken(request));
     }
 
-    @PostMapping("/forgot_password")
-    @ApiOperation("User received token by email to confirm his email")
-    public ResponseEntity forgotPassword(@RequestBody @Valid EmailRequest forgotPasswordRequest) {
-        authenticationService.createTokenForPassword(forgotPasswordRequest);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
 
-    /**
-     * выбрасывает исключение, если токен не валидный с соответствующим статусом,
-     * если все ок с токеном, то возращает id profile для передачи его по следующему реквесту обновления пароля
-     *
-     * @param confirmationToken
-     * @return
-     */
-    @PostMapping("/forgot_password/confirm")
-    @ApiOperation("return profile id for frontend if token is valid. " +
-            "if token not valid - response with UNAUTHORIZED status")
-    public ResponseEntity<ProfileDetailsForPasswordDto> forgotPasswordCheckToken(@RequestBody @Valid ConfirmationTokenDto confirmationToken) {
-        return ResponseEntity.ok(authenticationService.checkTokenForPassword(confirmationToken));
-    }
-
-    @PostMapping("/forgot_password/update")
+    @PostMapping("/forgot-password")
     @ApiOperation("return access and refresh tokens")
     public ResponseEntity<AuthResponse> updatePassword(@RequestBody @Valid UpdatePasswordRequest updatePasswordRequest) {
         return ResponseEntity.ok(authenticationService.updatePassword(updatePasswordRequest));
@@ -131,3 +86,47 @@ public class AuthController {
 //            "if service can't generate unique token for profile or send message with token by mail: " +
 //            "CantCompleteClientRequestException is throw and " +
 //            "response is returned with status INTERNAL_SERVER_ERROR and message \"cant complete client request\"")
+//
+//
+//    @PostMapping("/sign-up/confirm")
+//    @ApiOperation("User registration. request - token, to confirm user's email. Return a response with status OK " +
+//            "and with an access token and a refresh token." +
+//            "If the token is not valid (which means we cannot find it in the database), " +
+//            "a response is received with the UNAUTHORIZED status and the message \"token not found.\"" +
+//            "If the token is already confirmed," +
+//            "a response is received with the status UNAUTHORIZED and the message \"email already confirmed\"" +
+//            "If the token has expired, a response is returned with a status UNAUTHORIZED with message \"token expired\"." +
+//            "If the token is valid, then a response with tokens is returned.")
+//    public ResponseEntity<AuthResponse> confirmRegister(@RequestBody ConfirmationTokenDto confirmationToken) {
+//        return ResponseEntity.ok(authenticationService.confirmRegister(confirmationToken));
+//    }
+
+
+//
+//    @PostMapping("/sign-up/refreshToken")
+//    public ResponseEntity refreshToken(@RequestBody @Valid EmailRequest emailRequest) {
+//        authenticationService.refreshRegistrationToken(emailRequest);
+//        return new ResponseEntity<>(HttpStatus.OK);
+//    }
+
+
+//    @PostMapping("/forgot_password")
+//    @ApiOperation("User received token by email to confirm his email")
+//    public ResponseEntity forgotPassword(@RequestBody @Valid EmailRequest forgotPasswordRequest) {
+//        authenticationService.createTokenForPassword(forgotPasswordRequest);
+//        return new ResponseEntity<>(HttpStatus.OK);
+//    }
+
+//    /**
+//     * выбрасывает исключение, если токен не валидный с соответствующим статусом,
+//     * если все ок с токеном, то возращает id profile для передачи его по следующему реквесту обновления пароля
+//     *
+//     * @param confirmationToken
+//     * @return
+//     */
+//    @PostMapping("/forgot_password/confirm")
+//    @ApiOperation("return profile id for frontend if token is valid. " +
+//            "if token not valid - response with UNAUTHORIZED status")
+//    public ResponseEntity<ProfileDetailsForPasswordDto> forgotPasswordCheckToken(@RequestBody @Valid ConfirmationTokenDto confirmationToken) {
+//        return ResponseEntity.ok(authenticationService.checkTokenForPassword(confirmationToken));
+//    }
