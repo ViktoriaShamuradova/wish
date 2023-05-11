@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
+import java.util.List;
 
 
 public interface WishService {
@@ -35,5 +36,5 @@ public interface WishService {
 
     StoryWishDto getStoryWish();
 
-    Page<AbstractWishDto> getOwmWishes(Pageable pageable);
+    List<AbstractWishDto> getOwmWishesInProgress();
 }

@@ -22,5 +22,4 @@ public class FinishedWishDto extends AbstractWishDto {
     private String executedProfileUid;
     private long wishId;
     private int watchCount;
-
 }

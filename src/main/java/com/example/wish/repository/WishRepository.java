@@ -37,6 +37,8 @@ public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificat
     Page<Wish> findAllByTagsIn(Set<Tag> tags, Pageable pageable);
 
     List<Wish> findByOwnProfileIdAndStatus(Long profileId, WishStatus status);
+    List<Wish> findByOwnProfileIdAndStatusIn(Long profileId, List<WishStatus> statuses);
+
 
     @Modifying
     @Query("DELETE Wish c WHERE c.id = ?1")

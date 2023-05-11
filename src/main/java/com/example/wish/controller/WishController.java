@@ -10,13 +10,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.SortDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.List;
+//проверить момент, что если желание какого-то приоритета в процессе, то создавать желание
+//этого приоритета нельзя, потому что исполнитель может отменить выполнение желания, и желание переходит в статус new
+// тогда получается, что два желания одного приоритета, что по правилам так нельзя
 
 //if service return void  - need ResponseEntity.ok().build() <?>
 @RestController
@@ -27,13 +30,24 @@ public class WishController {
     private final WishService wishService;
 
     /**
-     * возвращаем лист, а не page, потому что могут быть только семь желаний
+     * Возвращает собственные желания текущего юзера для главного экрана в статусе new, in_progress
      *
      * @return
      */
-    @GetMapping("/ownWishes")
-    public Page<AbstractWishDto> getOwnWishesInProgress(@SortDefault(sort = "priorityRank", direction = Sort.Direction.ASC) Pageable pageable) {
-        return wishService.getOwmWishes(pageable);
+    @GetMapping("/in-progress")
+    public ResponseEntity<List<AbstractWishDto>> getOwnWishesInProgress() {
+        return ResponseEntity.ok(wishService.getOwmWishesInProgress());
+    }
+
+    /**
+     * отображаются желания, которые в статусе new или in-progress.
+     * finish wish, deleted - не отображаются. Чтобы их просмотреть, нужно идти по урлу истории
+     * @param id
+     * @return
+     */
+    @GetMapping("/in-progress/{id}")
+    public ResponseEntity<AbstractWishDto> findWish(@PathVariable("id") long id) {
+        return ResponseEntity.ok(wishService.find(id));
     }
 
     /**
@@ -123,10 +137,7 @@ public class WishController {
         return ResponseEntity.ok(profile);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<AbstractWishDto> findWish(@PathVariable("id") long id) {
-        return ResponseEntity.ok(wishService.find(id));
-    }
+
 
 
     /**

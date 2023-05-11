@@ -70,6 +70,7 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
     }
 
 
+    @Override
     public List<AbstractWishDto> findOwmWishesDto(Long profileId) {
         //находим свои желания
         List<Wish> ownWishes = wishRepository.findByOwnProfileId(profileId);
@@ -77,12 +78,6 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
         return convertIfWishInProgress(ownWishes);
     }
 
-    @Override
-    public Page<AbstractWishDto> findOwmWishesDto(Long profileId, Pageable pageable) {
-        Page<Wish> ownWishes = wishRepository.findByOwnProfileId(profileId, pageable);
-
-        return convertIfWishInProgress(ownWishes);
-    }
 
     private List<AbstractWishDto> convertIfWishInProgress(List<Wish> ownWishes) {
         List<AbstractWishDto> ownWishesDto = new ArrayList<>();

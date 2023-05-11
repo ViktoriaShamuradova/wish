@@ -15,19 +15,20 @@ import com.example.wish.repository.ExecutingWishRepository;
 import com.example.wish.repository.FinishedWishRepository;
 import com.example.wish.repository.ProfileRepository;
 import com.example.wish.repository.WishRepository;
+import com.example.wish.service.ProfileVisitorService;
 import com.example.wish.service.WishService;
 import com.example.wish.util.DateUtil;
-import com.example.wish.util.ImageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.time.Instant;
@@ -42,6 +43,8 @@ import java.util.stream.Stream;
 @Service
 public class WishServiceImpl implements WishService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(WishServiceImpl.class);
+
     private final ProfileRepository profileRepository;
     private final ExecutingWishRepository executingWishRepository;
     private final FinishedWishRepository finishedWishRepository;
@@ -51,6 +54,7 @@ public class WishServiceImpl implements WishService {
     private final NotificationManagerService notificationManagerService;
     private final AuthenticationService authenticationService;
     private final KarmaCounter karmaCounter;
+    private final ProfileVisitorService profileVisitorService;
 
 
     private static final int MAX_COUNT_WISHES = 7;
@@ -207,7 +211,7 @@ public class WishServiceImpl implements WishService {
     }
 
     @Override
-    public MainScreenProfileDto cancelExecution( long id) {
+    public MainScreenProfileDto cancelExecution(long id) {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
 
         Wish wish = wishRepository.findById(id)
@@ -240,11 +244,21 @@ public class WishServiceImpl implements WishService {
         return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
     }
 
+    /**
+     * get own wishes in progress or new
+     * проверить, чтобы не возвращали желания, которые уже завершены
+     *
+     * @return
+     */
     @Override
-    public Page<AbstractWishDto> getOwmWishes(Pageable pageable) {
+    public List<AbstractWishDto> getOwmWishesInProgress() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
-        return profileDtoBuilder.findOwmWishesDto(currentProfile.getId(), pageable);
+        List<Wish> ownWishes = wishRepository.findByOwnProfileIdAndStatusIn(currentProfile.getId(),
+                List.of(WishStatus.NEW, WishStatus.IN_PROGRESS));
+
+        return convertIfWishInProgress(ownWishes);
     }
+
 
     /**
      * фильтр желаний для других пользователей происходит по статусу new
@@ -312,17 +326,33 @@ public class WishServiceImpl implements WishService {
         return searchScreenWishDto;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * отображают желание не из истории
+     * @param id
+     * @return
+     */
+    @Transactional()
     @Override
     public AbstractWishDto find(long id) {
         Wish wish = wishRepository.findById(id).orElseThrow(() -> new WishNotFoundException(id));
+
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId()).get();
+
+        wish.setWatchCount(countProfileVisitorWish(profile, wish));
 
         if (wish.getStatus() == WishStatus.NEW) {
             return wishMapper.convertToDto(wish);
         } else if (wish.getStatus() == WishStatus.IN_PROGRESS) {
             return wishMapper.convertToDto(executingWishRepository.findByWishId(id).get());
         }
-        throw new WishException("exception");
+
+//        } else if (wish.getStatus() == WishStatus.FINISHED) {
+//            FinishedWish finishedWish = finishedWishRepository.findByWishId(id).get();
+//            return wishMapper.convertToDto(finishedWish);
+//        }
+        //удаленные желания не должны быть доступны никаким profile
+        throw new WishException("the wish has been deleted and is not available");
     }
 
     @Override
@@ -356,8 +386,8 @@ public class WishServiceImpl implements WishService {
 
         executingWishRepository.save(executingWish);
 
-       // notificationManagerService.sendExecuteWishToExecutor(executingWish.getExecutingProfile());
-     //   notificationManagerService.sendExecuteWishToOwner(wish.getOwnProfile());
+        // notificationManagerService.sendExecuteWishToExecutor(executingWish.getExecutingProfile());
+        //   notificationManagerService.sendExecuteWishToOwner(wish.getOwnProfile());
 
         return profileDtoBuilder.buildMainScreen(profileRepository.findById(profile.getId()).get());
     }
@@ -395,7 +425,18 @@ public class WishServiceImpl implements WishService {
         return storyWish;
     }
 
-
+    private List<AbstractWishDto> convertIfWishInProgress(List<Wish> ownWishes) {
+        List<AbstractWishDto> ownWishesDto = new ArrayList<>();
+        for (Wish w : ownWishes) {
+            if (w.getStatus() == WishStatus.NEW) {
+                ownWishesDto.add(wishMapper.convertToDto(w));
+            } else if (w.getStatus() == WishStatus.IN_PROGRESS) {
+                ExecutingWish executingWish = executingWishRepository.findByWishId(w.getId()).get();
+                ownWishesDto.add(wishMapper.convertToDto(executingWish));
+            }
+        }
+        return ownWishesDto;
+    }
 
     private void validateNewWish(Profile profile, Wish wish) {
         if (!profile.getOwnWishes().isEmpty()) {
@@ -417,4 +458,22 @@ public class WishServiceImpl implements WishService {
                 throw new PriorityWishException("You have a wish of the same priority " + w.getPriority());
         }
     }
+
+    private int countProfileVisitorWish(Profile profile, Wish wish) {
+        int watchCount = 0;
+        if (!(profile == wish.getOwnProfile())) {
+            ProfileVisitorWish profileVisitorWish = new ProfileVisitorWish(profile, wish);
+            try {
+                profileVisitorService.save(profileVisitorWish);
+                watchCount = profileVisitorService.countProfilesByWish(wish);
+            } catch (Exception ex) {
+                LOGGER.info("Failed to save profileVisitorWish: " + ex.getMessage());
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            }
+        } else {
+            watchCount = profileVisitorService.countProfilesByWish(wish);
+        }
+        return watchCount;
+    }
+
 }

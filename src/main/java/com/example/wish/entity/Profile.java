@@ -19,8 +19,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
-
-@ToString
 @Getter
 @Setter
 @NoArgsConstructor
@@ -107,7 +105,8 @@ public class Profile implements Serializable {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @OneToMany(mappedBy = "ownProfile", fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REMOVE})
+    @OneToMany(mappedBy = "ownProfile",
+            fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REMOVE})
     private List<Wish> ownWishes;
 
     @ManyToMany(mappedBy = "profiles")
@@ -146,5 +145,34 @@ public class Profile implements Serializable {
     @Override
     public int hashCode() {
         return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "Profile{" +
+                "id=" + id +
+                ", uid='" + uid + '\'' +
+                ", firstname='" + firstname + '\'' +
+                ", lastname='" + lastname + '\'' +
+                ", password='" + password + '\'' +
+                ", email='" + email + '\'' +
+                ", locked=" + locked +
+                ", enabled=" + enabled +
+                ", birthday=" + birthday +
+                ", sex=" + sex +
+                ", phone='" + phone + '\'' +
+                ", country='" + country + '\'' +
+                ", city='" + city + '\'' +
+                ", karma=" + karma +
+                ", status=" + status +
+                ", statusLevel=" + statusLevel +
+                ", created=" + created +
+                ", photo='" + photo + '\'' +
+                ", contact=" + contact +
+                ", active=" + active +
+                ", role=" + role +
+              //  ", ownWishes=" + ownWishes +
+              //  ", energyPractices=" + energyPractices +
+                '}';
     }
 }

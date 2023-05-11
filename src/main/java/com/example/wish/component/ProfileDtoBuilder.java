@@ -18,5 +18,5 @@ public interface ProfileDtoBuilder {
 
     ProfileDto buildProfileDto(Profile profile);
 
-    Page<AbstractWishDto> findOwmWishesDto(Long profileId, Pageable pageable);
+    List<AbstractWishDto> findOwmWishesDto(Long profileId);
 }
