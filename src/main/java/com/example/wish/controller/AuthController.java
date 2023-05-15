@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.security.auth.message.AuthException;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
@@ -20,9 +21,6 @@ import javax.validation.Valid;
 @RequestMapping("/v1/demo/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
-    public static final String SIGN_UP_PATH = "/sign-up";
-    public static final String REFRESH_ACCESS_TOKEN_PATH = "/token/refresh";
 
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
@@ -56,14 +54,26 @@ public class AuthController {
         return ResponseEntity.ok(authenticationService.authenticate(authRequest));
     }
 
-    //хранить в бд рефреш токен или нет?
-    @PostMapping(REFRESH_ACCESS_TOKEN_PATH)
-    @ApiOperation("If access token not valid need to refresh token to update access token. " +
-            "To give a user access to his resource without authentication. " +
+    //хранить в бд рефреш токен или нет
+    @PostMapping("/access-token/refresh")
+    @ApiOperation("If access token not valid need to update access token " +
+            "to give a user access to his resource without authentication. " +
             "If refresh token not valid - return response with UNAUTHORIZED status. And user need to sign in")
 
-    public ResponseEntity<AuthResponse> refreshToken(HttpServletRequest request) {
-        return ResponseEntity.ok(authenticationService.refreshAccessToken(request));
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody RefreshJwtRequest request) {
+        return ResponseEntity.ok(authenticationService.refreshAccessToken(request.getRefreshToken()));
+    }
+
+    /**
+     * обновляем рефреш токен
+     * @param request
+     * @return
+     * @throws AuthException
+     */
+    @PostMapping("/refresh-token/refresh")
+    public ResponseEntity<AuthResponse> getNewRefreshToken(@RequestBody RefreshJwtRequest request) throws AuthException {
+        final AuthResponse token = authenticationService.refresh(request.getRefreshToken());
+        return ResponseEntity.ok(token);
     }
 
 

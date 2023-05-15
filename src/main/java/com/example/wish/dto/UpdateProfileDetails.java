@@ -1,6 +1,6 @@
 package com.example.wish.dto;
 
-import com.example.wish.entity.Contact;
+import com.example.wish.entity.Socials;
 import com.example.wish.entity.Sex;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,6 +19,6 @@ public class UpdateProfileDetails {
     private String country;
     private String city;
     private Sex sex;
-    private Contact contact;
+    private Socials socials;
     private String photo;
 }

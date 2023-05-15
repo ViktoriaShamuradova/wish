@@ -118,7 +118,7 @@ public class ProfileServiceImpl implements ProfileService {
         profile.setCountry(updateProfileRequest.getCountry());
         profile.setCity(updateProfileRequest.getCity());
         profile.setSex(updateProfileRequest.getSex());
-        profile.setContact(updateProfileRequest.getContact());
+        profile.setSocials(updateProfileRequest.getSocials());
         profile.setBirthday(updateProfileRequest.getBirthday());
         profile.setPhoto(updateProfileRequest.getPhoto());
 

@@ -97,7 +97,7 @@ public class Profile implements Serializable {
     private String photo;
 
     @Embedded
-    private Contact contact;
+    private Socials socials;
 
     @Column(nullable = false)
     private Boolean active;
@@ -168,11 +168,9 @@ public class Profile implements Serializable {
                 ", statusLevel=" + statusLevel +
                 ", created=" + created +
                 ", photo='" + photo + '\'' +
-                ", contact=" + contact +
+                ", socials=" + socials +
                 ", active=" + active +
                 ", role=" + role +
-              //  ", ownWishes=" + ownWishes +
-              //  ", energyPractices=" + energyPractices +
                 '}';
     }
 }

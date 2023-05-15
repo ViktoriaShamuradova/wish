@@ -26,7 +26,7 @@ public class Profile_ {
     public static volatile SingularAttribute<Profile, ProfileStatus> status;
     public static volatile SingularAttribute<Profile, ProfileStatusLevel> statusLevel;
     public static volatile SingularAttribute<Profile, Timestamp> created;
-    public static volatile SingularAttribute<Profile, Contact> contact;
+    public static volatile SingularAttribute<Profile, Socials> contact;
     public static volatile SingularAttribute<Profile, Long> id;
     public static volatile SingularAttribute<Profile, Boolean> active;
     public static volatile SingularAttribute<Profile, Role> role;

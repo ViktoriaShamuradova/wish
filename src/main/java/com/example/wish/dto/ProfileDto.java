@@ -1,6 +1,6 @@
 package com.example.wish.dto;
 
-import com.example.wish.entity.Contact;
+import com.example.wish.entity.Socials;
 import com.example.wish.entity.ProfileStatus;
 import com.example.wish.entity.ProfileStatusLevel;
 import com.example.wish.entity.Sex;
@@ -27,6 +27,6 @@ public class ProfileDto {
         private ProfileStatus status;
         private ProfileStatusLevel statusLevel;
         private String photo;
-        private Contact contact;
+        private Socials socials;
 
 }

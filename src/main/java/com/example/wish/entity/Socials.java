@@ -11,7 +11,7 @@ import javax.persistence.Embeddable;
 @Data
 @Embeddable
 @Access(AccessType.FIELD)
-public class Contact {
+public class Socials {
 
     @Column(length = 255)
     @URL
@@ -37,6 +37,6 @@ public class Contact {
     @URL
     private String whatsApp;
 
-    public Contact() {
+    public Socials() {
     }
 }

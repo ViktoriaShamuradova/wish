@@ -8,14 +8,13 @@ import com.example.wish.entity.ProfileStatusLevel;
 import com.example.wish.entity.Role;
 import com.example.wish.exception.CantCompleteClientRequestException;
 import com.example.wish.exception.auth.EmailException;
-import com.example.wish.exception.auth.TokenException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
-import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.repository.ProfileRepository;
 import com.example.wish.util.DataBuilder;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.servlet.http.HttpServletRequest;
+import javax.security.auth.message.AuthException;
+import javax.validation.constraints.NotNull;
 import java.sql.Timestamp;
 import java.util.Optional;
 
@@ -113,16 +113,14 @@ public class AuthenticationService {
 
         CurrentProfile currentProfile = new CurrentProfile(profile);
 
-        var accessToken = jwtService.generateToken(currentProfile);
+        var accessToken = jwtService.generateAccessToken(currentProfile);
         var refreshToken = jwtService.generateRefreshToken(currentProfile);
 
         return createAuthResponse(accessToken, refreshToken);
     }
 
     @Transactional(readOnly = true)
-    public AuthResponse authenticate(AuthRequest authRequest) {
-        //exception will be throwing if username or password not correct
-        //or user not confirm his email
+    public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -136,13 +134,12 @@ public class AuthenticationService {
             throw new ProfileException("Confirm your email address to log in.");
         }
 
-//if we here, that means user is authenticated
         var profile = profileRepository.findByEmail(authRequest.getEmail())
                 .orElseThrow();
 
         CurrentProfile currentProfile = new CurrentProfile(profile);
 
-        var accessToken = jwtService.generateToken(currentProfile);
+        var accessToken = jwtService.generateAccessToken(currentProfile);
         var refreshToken = jwtService.generateRefreshToken(currentProfile);
 
         return createAuthResponse(accessToken, refreshToken);
@@ -173,29 +170,35 @@ public class AuthenticationService {
         }
     }
 
-    public AuthResponse refreshAccessToken(HttpServletRequest request) {
-        final String authHeader = request.getHeader("Authorization");
-        final String refreshToken;
-        final String username;
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenException("refresh token is missing");
-        } else {
-            refreshToken = authHeader.substring(7);
-            try {
-                username = jwtService.extractUsername(refreshToken);
+    public AuthResponse refreshAccessToken(@NonNull String refreshToken) {
 
-            } catch (Exception e) {
-                throw new TokenException(e.getMessage());
-            }
+        String username = jwtService.extractUsername(refreshToken);
+        UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        if (jwtService.isTokenValid(refreshToken, userDetails)) {
+            String accessToken = jwtService.generateAccessToken(userDetails);
 
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            if (jwtService.isTokenValid(refreshToken, userDetails)) {
-                String accessToken = jwtService.generateToken(userDetails);
-
-                return createAuthResponse(accessToken, refreshToken);
-            }
+            return createAuthResponse(accessToken, refreshToken);
         }
-        return null;
+        return new AuthResponse(null, null);
+    }
+
+    /**
+     * обновляем рефреш токен
+     *
+     * @param refreshToken
+     * @return
+     * @throws AuthException
+     */
+    public AuthResponse refresh(@NonNull String refreshToken) throws AuthException {
+        String username = jwtService.extractUsername(refreshToken);
+        UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        if (jwtService.isTokenValid(refreshToken, userDetails)) {
+            final String accessToken = jwtService.generateAccessToken(userDetails);
+            final String newRefreshToken = jwtService.generateRefreshToken(userDetails);
+            return new AuthResponse(accessToken, newRefreshToken);
+
+        }
+        throw new AuthException("Not valid refresh token");
     }
 
     private Profile createProfile(RegistrationRequest registerRequest) {
@@ -220,6 +223,7 @@ public class AuthenticationService {
                 .refreshToken(refreshToken)
                 .build();
     }
+
 
 }
 
