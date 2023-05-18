@@ -67,14 +67,19 @@ public class AuthenticationService {
 
         if (emailVerificationRequest.isRegistration()) {
             if (byEmail.isPresent()) {
+                LOGGER.info("email exist for registration");
+
                 throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
             }
+            LOGGER.info("send email");
             notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
                     emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
         } else {
             if (byEmail.isEmpty()) {
+                LOGGER.info("empty email");
                 throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " does not exists");
             }
+            LOGGER.info("send email for updating password");
             notificationManagerService.sendOnePasswordForResetPassword(emailVerificationRequest.getEmail(),
                     emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_PASSWORD);
         }
