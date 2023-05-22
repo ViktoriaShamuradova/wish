@@ -6,6 +6,7 @@ import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
 import com.example.wish.entity.Profile;
+import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,12 +51,60 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ProfileDto getProfileDto() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        //нужно ли это исключение, если authenticationService.getCurrentProfile уже генерит, если не находится
         Profile profile = profileRepository.findById(currentProfile.getId())
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
 
         return profileDtoBuilder.buildProfileDto(profile);
     }
 
+    @Override
+    @Transactional
+    public void addFavoriteProfile(Long favoriteProfileId) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        Profile favoriteProfile = profileRepository.findById(favoriteProfileId)
+                .orElseThrow(() -> new ProfileExistException("Favorite profile not found with ID: " + favoriteProfileId));
+
+        profile.addFavoriteProfile(favoriteProfile);
+        profileRepository.save(profile);
+    }
+
+
+    @Override
+    public List<ProfileDto> getFavoriteProfiles() {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        return profile.getFavoriteProfiles().stream()
+                .map(profileDtoBuilder::buildProfileDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<ProfileDto> removeFavoriteProfile(Long favoriteProfileId) {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        Profile favoriteProfile = profileRepository.findById(favoriteProfileId)
+                .orElseThrow(() -> new ProfileNotFoundException("Favorite profile not found with ID: " + favoriteProfileId));
+
+        profile.removeFavoriteProfile(favoriteProfile);
+        profileRepository.save(profile);
+
+        return profile.getFavoriteProfiles().stream()
+                .map(profileDtoBuilder::buildProfileDto)
+                .collect(Collectors.toList());
+    }
 
     //если тек юзер, то выводить собственные желания незавершенные
     @Override

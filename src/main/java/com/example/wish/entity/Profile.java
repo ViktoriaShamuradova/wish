@@ -15,9 +15,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Getter
 @Setter
@@ -111,6 +109,35 @@ public class Profile implements Serializable {
 
     @ManyToMany(mappedBy = "profiles")
     private List<EnergyPractice> energyPractices;
+
+    @ManyToMany
+    @JoinTable(
+            name = "profile_favorite",
+            joinColumns = @JoinColumn(name = "profile_id"),
+            inverseJoinColumns = @JoinColumn(name = "favorite_profile_id")
+    )
+    private Set<Profile> favoriteProfiles = new HashSet<>();
+
+
+    public Set<Profile> getFavoriteProfiles() {
+        return favoriteProfiles;
+    }
+
+    public void setFavoriteProfiles(Set<Profile> favoriteProfiles) {
+        this.favoriteProfiles = favoriteProfiles;
+    }
+
+    // Helper methods
+
+    public void addFavoriteProfile(Profile profile) {
+        favoriteProfiles.add(profile);
+       // profile.getFavoriteProfiles().add(this);
+    }
+
+    public void removeFavoriteProfile(Profile profile) {
+        favoriteProfiles.remove(profile);
+        //profile.getFavoriteProfiles().remove(this);
+    }
 
     @Transient
     public Integer getAge() {

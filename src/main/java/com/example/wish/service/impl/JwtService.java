@@ -45,9 +45,8 @@ public class JwtService {
     private String generateAccessToken(Map<String, Object> extraClaims,
                                        UserDetails userDetails) {
         final LocalDateTime now = LocalDateTime.now();
-        final Instant accessExpirationInstant = now.plusMinutes(5).atZone(ZoneId.systemDefault()).toInstant();
+        final Instant accessExpirationInstant = now.plusDays(60).atZone(ZoneId.systemDefault()).toInstant();
 
-        //final Instant accessExpirationInstant = now.plusDays(60).atZone(ZoneId.systemDefault()).toInstant();
         final Date accessExpiration = Date.from(accessExpirationInstant);
 
         return Jwts.builder()

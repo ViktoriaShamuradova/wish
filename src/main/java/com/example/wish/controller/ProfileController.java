@@ -4,6 +4,7 @@ import com.example.wish.dto.MainScreenProfileDto;
 import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
+import com.example.wish.entity.Profile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.service.ProfileService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/v1/demo/profile")
@@ -84,5 +86,27 @@ public class ProfileController {
         profileService.update(profileDetails);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
+
+    @PostMapping("/favorite/{favoriteProfileId}")
+    public ResponseEntity addFavoriteProfile(
+            @PathVariable Long favoriteProfileId) {
+        profileService.addFavoriteProfile(favoriteProfileId);
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<List<ProfileDto>> getFavoriteProfiles() {
+        List<ProfileDto> favoriteProfiles = profileService.getFavoriteProfiles();
+        return ResponseEntity.ok(favoriteProfiles);
+    }
+
+
+    @DeleteMapping("/favorite/{favoriteProfileId}")
+    public ResponseEntity<List<ProfileDto>> removeFavoriteProfile(
+            @PathVariable Long favoriteProfileId) {
+        List<ProfileDto> favoriteProfiles = profileService.removeFavoriteProfile(favoriteProfileId);
+        return ResponseEntity.ok(favoriteProfiles);
+    }
+
 
 }
