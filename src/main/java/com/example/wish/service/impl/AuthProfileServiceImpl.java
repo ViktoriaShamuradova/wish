@@ -1,11 +1,11 @@
 package com.example.wish.service.impl;
 
 import com.example.wish.entity.Profile;
+import com.example.wish.entity.Provider;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +25,9 @@ public class AuthProfileServiceImpl implements UserDetailsService {
         Optional<Profile> profile = findProfile(username);
 
         if (profile.isPresent()) {
+            if (profile.get().getProvider() == Provider.GOOGLE) {
+                return new CurrentProfile(profile.get(), "N/A");
+            }
             return new CurrentProfile(profile.get());
         } else {
             log.error("Profile {} not found", username);

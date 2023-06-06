@@ -41,7 +41,7 @@ public class Profile implements Serializable {
     @Column(name = "last_name", length = 20)
     private String lastname;
 
-    @Column(name = "password", nullable = false, length = 100)
+    @Column(name = "password", length = 100)
     @JsonIgnore
     private String password;
 
@@ -63,6 +63,10 @@ public class Profile implements Serializable {
     @Column(name = "sex")
     @Enumerated(EnumType.STRING)
     private Sex sex;
+
+    @Column(name = "provider")
+    @Enumerated(EnumType.STRING)
+    private Provider provider;
 
     @Column(length = 20)
     @Size(max = 20)
@@ -131,7 +135,7 @@ public class Profile implements Serializable {
 
     public void addFavoriteProfile(Profile profile) {
         favoriteProfiles.add(profile);
-       // profile.getFavoriteProfiles().add(this);
+        // profile.getFavoriteProfiles().add(this);
     }
 
     public void removeFavoriteProfile(Profile profile) {

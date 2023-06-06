@@ -1,21 +1,28 @@
 package com.example.wish.controller;
 
 import com.example.wish.dto.*;
+import com.example.wish.entity.Profile;
+import com.example.wish.exception.profile.ProfileException;
+import com.example.wish.model.CurrentProfile;
+import com.example.wish.service.SocialService;
 import com.example.wish.service.impl.AuthenticationService;
 import com.example.wish.service.impl.JwtService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.message.AuthException;
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 @RestController
 @RequestMapping("/v1/demo/auth")
@@ -25,10 +32,13 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final SocialService<GoogleIdToken> googleSocialService;
 
     /**
      * send message to verify email.
      * it url also use to send message again, for registration, forgot password
+     *
      * @param emailVerificationRequest
      * @return
      */
@@ -42,7 +52,7 @@ public class AuthController {
     @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
             "If the mail is not valid - a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
             "If email already exist - a response is returned with status BAD_REQUEST with message \"email already exists\"")
-    public ResponseEntity register(@RequestBody @Valid RegistrationRequest registerRequest) {
+    public ResponseEntity<ProfileDto> register(@RequestBody @Valid RegistrationRequest registerRequest) {
         authenticationService.register(registerRequest);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
@@ -53,6 +63,66 @@ public class AuthController {
     public ResponseEntity<AuthResponse> authenticate(@RequestBody @Valid AuthRequest authRequest) {
         return ResponseEntity.ok(authenticationService.authenticate(authRequest));
     }
+
+    //возвращать тот же токен idTokenString
+    @PostMapping("/sign-in/google")
+    public ResponseEntity<AuthResponse> loginFromGoogle(@RequestHeader("Authorization") String idTokenString) throws GeneralSecurityException, IOException {
+        GoogleIdToken idToken = googleIdTokenVerifier.verify(idTokenString.substring(7));
+
+        if (idToken != null) {
+            Profile profile = googleSocialService.loginViaSocialNetwork(idToken);
+
+            CurrentProfile currentProfile = new CurrentProfile(profile, "N/A");
+
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    currentProfile, currentProfile.getPassword(), currentProfile.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            var accessToken = jwtService.generateAccessToken(currentProfile);
+            var refreshToken = jwtService.generateRefreshToken(currentProfile);
+            AuthResponse resp = AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken).build();
+
+            // return new ResponseEntity<>(HttpStatus.CREATED);
+            return ResponseEntity.ok(resp);
+
+        } else {
+            throw new ProfileException("failed register from google");
+        }
+
+    }
+
+
+//    private Mono<Void> successfulAuthentication(ServerWebExchange exchange, OAuth2AuthenticationToken authentication) {
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
+//
+//        String token = tokenManager.generate(authentication);
+//        tokenManager.put(token, authentication);
+//
+//        exchange.getResponse().getHeaders().set(contentTypeHeader, MediaType.APPLICATION_JSON_VALUE);
+//        exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(jacksonObjectMapper().writeValueAsBytes(new TokenResponse(token)))));
+//        return Mono.empty();
+//    }
+
+//    private Mono<Void> unsuccessfulAuthentication(ServerWebExchange exchange, AuthenticationException exception) {
+//        SecurityContextHolder.clearContext();
+//        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+//        return exchange.getResponse().setComplete();
+//    }
+
+//    private static class TokenResponse {
+//        private final String token;
+//
+//        public TokenResponse(String token) {
+//            this.token = token;
+//        }
+//
+//        public String getToken() {
+//            return token;
+//        }
+//    }
+
 
     //хранить в бд рефреш токен или нет
     @PostMapping("/access-token/refresh")
@@ -66,6 +136,7 @@ public class AuthController {
 
     /**
      * обновляем рефреш токен
+     *
      * @param request
      * @return
      * @throws AuthException
@@ -81,6 +152,13 @@ public class AuthController {
     @ApiOperation("return access and refresh tokens")
     public ResponseEntity<AuthResponse> updatePassword(@RequestBody @Valid UpdatePasswordRequest updatePasswordRequest) {
         return ResponseEntity.ok(authenticationService.updatePassword(updatePasswordRequest));
+    }
+
+    private AuthResponse createAuthResponse(String accessToken, String refreshToken) {
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
 }

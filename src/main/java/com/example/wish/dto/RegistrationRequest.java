@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 @Getter
@@ -15,8 +16,10 @@ import java.io.Serializable;
 //@FieldMatch(first = "password", second = "confirmPassword", message = "The password fields must match")
 public class RegistrationRequest implements Serializable {
 
+    @NotNull
     private final String email;
 
+    @NotNull
     @PasswordStrength
     private final String password;
 

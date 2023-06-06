@@ -2,12 +2,18 @@ package com.example.wish.filter;
 
 import com.example.wish.service.impl.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +28,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +40,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {  //extends U
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    @Autowired
+    private GoogleIdTokenVerifier googleIdTokenVerifier;
 
     @Override
     protected void doFilterInternal(@NotNull HttpServletRequest request,
@@ -44,11 +54,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {  //extends U
 
         String username = null;
 
+
+        String requestUri = request.getRequestURI();
+        if (requestUri.contains("/sign-in/google")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
+
         jwt = authHeader.substring(7);
+
+        try {
+            JWT token = JWTParser.parse(jwt);
+            JWTClaimsSet claimsSet = token.getJWTClaimsSet();
+
+            String issuer = claimsSet.getIssuer();
+            boolean isIssuerValid = "accounts.google.com".equals(issuer) || "https://accounts.google.com".equals(issuer);
+
+            if (isIssuerValid) {
+                GoogleIdToken idToken = googleIdTokenVerifier.verify(jwt);
+                filterChain.doFilter(request, response);
+                return;
+            }
+        } catch (IOException | GeneralSecurityException e) {
+            // Error parsing or validating the token
+            // Handle token validation error
+            e.printStackTrace();
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+
+
         try {
             username = jwtService.extractUsername(jwt);
         } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {

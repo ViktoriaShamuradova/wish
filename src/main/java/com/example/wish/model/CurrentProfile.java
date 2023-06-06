@@ -24,6 +24,15 @@ public class CurrentProfile extends User {
         this.email = profile.getEmail();
     }
 
+    public CurrentProfile(Profile profile, String password) {
+        super(profile.getEmail(), password,
+                profile.getEnabled(), true, true,
+                !profile.getLocked(),
+                Collections.singleton(new SimpleGrantedAuthority(Role.USER.name())));
+        this.id = profile.getId();
+        this.email = profile.getEmail();
+    }
+
     public String getEmail() {
         return email;
     }

@@ -1,9 +1,13 @@
 package com.example.wish.config;
 
 import com.example.wish.filter.JwtAuthenticationFilter;
-//import com.example.wish.filter.StartEndpointFilter;
 import com.example.wish.service.impl.AuthProfileServiceImpl;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -18,17 +22,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Collections;
+
 
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true, jsr250Enabled = true)
 public class SecurityConfig {
 
+    @Value("${spring.security.oauth2.client.registration.google.client-id}")
+    private String clientId;
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
-//    @Autowired
-//    private StartEndpointFilter startEndpointFilter;
+
     @Autowired
     private AuthenticationManager authenticationManager;
+
     @Autowired
     private AuthProfileServiceImpl profileService;
 
@@ -56,7 +64,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
-                //  http.csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeRequests()
                 .antMatchers("/v*/demo/auth/**").permitAll()
@@ -68,19 +75,19 @@ public class SecurityConfig {
                 .and()
                 .authenticationManager(authenticationManager)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+               // .oauth2Login();
+        // .oauth2ResourceServer();
+
 
         return http.build();
     }
-    //.addFilterBefore(startEndpointFilter, UsernamePasswordAuthenticationFilter.class) // add StartEndpointFilter before JwtAuthenticationFilter
-    //        .authenticationManager(authenticationManager)
-    //        .addFilterAfter(jwtAuthFilter, StartEndpointFilter.class);
 
-    // .addFilterBefore(startEndpointFilter, BasicAuthenticationFilter.class) // add this line
-    //                .authenticationManager(authenticationManager)
-    //                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-    // .and()
-    //                .addFilterBefore(startEndpointFilter, UsernamePasswordAuthenticationFilter.class) // add this line
-    //                .authenticationManager(authenticationManager)
-    //                .addFilterAfter(jwtAuthFilter, StartEndpointFilter.class);
-
+    @Bean
+    public GoogleIdTokenVerifier googleTokenVerifier() {
+        NetHttpTransport transport = new NetHttpTransport();
+        JsonFactory jsonFactory = new GsonFactory();
+        return new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
+                .setAudience(Collections.singletonList(clientId))
+                .build();
+    }
 }

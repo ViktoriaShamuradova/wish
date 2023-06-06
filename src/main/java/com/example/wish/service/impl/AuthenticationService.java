@@ -2,10 +2,7 @@ package com.example.wish.service.impl;
 
 import com.example.wish.component.NotificationManagerService;
 import com.example.wish.dto.*;
-import com.example.wish.entity.Profile;
-import com.example.wish.entity.ProfileStatus;
-import com.example.wish.entity.ProfileStatusLevel;
-import com.example.wish.entity.Role;
+import com.example.wish.entity.*;
 import com.example.wish.exception.CantCompleteClientRequestException;
 import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
@@ -102,7 +99,7 @@ public class AuthenticationService {
             throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
         } else {
             var profile = createProfile(registerRequest);
-            profile.setEnabled(true);
+            profile.setEnabled(true); //true - потому что перед данным запросом юзер уже получил письмо не почту, а значит доступен
             profileRepository.save(profile);
         }
     }
@@ -217,6 +214,7 @@ public class AuthenticationService {
                 .statusLevel(ProfileStatusLevel.PERSON)
                 .created(new Timestamp(System.currentTimeMillis()))
                 .karma(0)
+                .provider(Provider.LOCAL)
                 .locked(false)
                 .enabled(false) //value before verification email. user need to confirm email
                 .build();
@@ -228,7 +226,6 @@ public class AuthenticationService {
                 .refreshToken(refreshToken)
                 .build();
     }
-
 
 }
 
