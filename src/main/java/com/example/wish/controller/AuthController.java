@@ -52,9 +52,9 @@ public class AuthController {
     @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
             "If the mail is not valid - a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
             "If email already exist - a response is returned with status BAD_REQUEST with message \"email already exists\"")
-    public ResponseEntity<ProfileDto> register(@RequestBody @Valid RegistrationRequest registerRequest) {
-        authenticationService.register(registerRequest);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+    public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegistrationRequest registerRequest) {
+        AuthResponse authResponse = authenticationService.register(registerRequest);
+        return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
     }
 
     @PostMapping("/sign-in")
@@ -65,6 +65,9 @@ public class AuthController {
     }
 
     //возвращать тот же токен idTokenString
+    //пользователь может войти с помощбю гугла, если он уже зареган(проверяется по почте), то возвращается тот же юзер
+    //если нет в базе, то создается новый.
+    //а что если поместить ггул токен в секьюрити контекст?
     @PostMapping("/sign-in/google")
     public ResponseEntity<AuthResponse> loginFromGoogle(@RequestHeader("Authorization") String idTokenString) throws GeneralSecurityException, IOException {
         GoogleIdToken idToken = googleIdTokenVerifier.verify(idTokenString.substring(7));
@@ -72,7 +75,7 @@ public class AuthController {
         if (idToken != null) {
             Profile profile = googleSocialService.loginViaSocialNetwork(idToken);
 
-            CurrentProfile currentProfile = new CurrentProfile(profile, "N/A");
+            CurrentProfile currentProfile = new CurrentProfile(profile, "N/A"); //or another password
 
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     currentProfile, currentProfile.getPassword(), currentProfile.getAuthorities());
@@ -87,7 +90,7 @@ public class AuthController {
             // return new ResponseEntity<>(HttpStatus.CREATED);
             return ResponseEntity.ok(resp);
 
-        } else {
+        } else { //значит, что токен не валидный и нужно получить id-token еще раз, если хотят регаться через гугл
             throw new ProfileException("failed register from google");
         }
 

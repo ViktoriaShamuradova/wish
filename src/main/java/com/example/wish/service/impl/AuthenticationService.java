@@ -89,7 +89,7 @@ public class AuthenticationService {
      * @return
      */
     @Transactional
-    public void register(RegistrationRequest registerRequest) {
+    public AuthResponse register(RegistrationRequest registerRequest) {
         boolean isValidEmail = emailValidator.test(registerRequest.getEmail());
         if (!isValidEmail) throw new EmailException(registerRequest.getEmail());
 
@@ -101,6 +101,13 @@ public class AuthenticationService {
             var profile = createProfile(registerRequest);
             profile.setEnabled(true); //true - потому что перед данным запросом юзер уже получил письмо не почту, а значит доступен
             profileRepository.save(profile);
+
+            CurrentProfile currentProfile = new CurrentProfile(profile);
+
+            var accessToken = jwtService.generateAccessToken(currentProfile);
+            var refreshToken = jwtService.generateRefreshToken(currentProfile);
+
+            return createAuthResponse(accessToken, refreshToken);
         }
     }
 
@@ -121,8 +128,17 @@ public class AuthenticationService {
         return createAuthResponse(accessToken, refreshToken);
     }
 
+    //добавить логику проверки: пользователь регистрировался каким образом?
+    //если через гугл, возвращаем исключение, что нужно использовать другой url
     @Transactional(readOnly = true)
     public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
+        var profile = profileRepository.findByEmail(authRequest.getEmail())
+                .orElseThrow(); //значит по почты не существует, пользователь не зареган - пользователю не нужно знать, что его почта может быть не верна
+
+        if (profile.getProvider() == Provider.GOOGLE) { //значит, что пароля в бд нет. и юзеру следует использовать другую ссылку для входа
+            throw new ProfileException("User registered by google. Need to use url \"/sign-in/google\"\" ");
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -135,9 +151,6 @@ public class AuthenticationService {
         } catch (AuthenticationException e) {
             throw new ProfileException("Confirm your email address to log in.");
         }
-
-        var profile = profileRepository.findByEmail(authRequest.getEmail())
-                .orElseThrow();
 
         CurrentProfile currentProfile = new CurrentProfile(profile);
 
