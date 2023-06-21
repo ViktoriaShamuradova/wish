@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -104,6 +105,18 @@ public class ProfileServiceImpl implements ProfileService {
         return profile.getFavoriteProfiles().stream()
                 .map(profileDtoBuilder::buildProfileDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean removeProfile(String email) {
+        Optional<Profile> byEmail = profileRepository.findByEmail(email);
+        if (byEmail.isPresent()) {
+            profileRepository.delete(byEmail.get());
+            return true;
+        } else {
+            return false;
+        }
+
     }
 
     //если тек юзер, то выводить собственные желания незавершенные

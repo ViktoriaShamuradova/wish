@@ -29,4 +29,6 @@ public interface ProfileService {
     List<ProfileDto> getFavoriteProfiles();
 
     List<ProfileDto> removeFavoriteProfile(Long favoriteProfileId);
+
+    boolean removeProfile(String email);
 }

@@ -4,9 +4,11 @@ import com.example.wish.dto.*;
 import com.example.wish.entity.Profile;
 import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.model.CurrentProfile;
+import com.example.wish.service.ProfileService;
 import com.example.wish.service.SocialService;
 import com.example.wish.service.impl.AuthenticationService;
 import com.example.wish.service.impl.JwtService;
+import com.example.wish.service.impl.ProfileServiceImpl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import io.swagger.annotations.ApiOperation;
@@ -30,6 +32,7 @@ import java.security.GeneralSecurityException;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final ProfileService profileService;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
@@ -46,6 +49,14 @@ public class AuthController {
     public ResponseEntity emailVerification(@RequestBody @Valid EmailVerificationRequest emailVerificationRequest) {
         authenticationService.verifyEmail(emailVerificationRequest);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity removeFavoriteProfile(
+            @PathVariable String email) {
+        boolean isDeleted = profileService.removeProfile(email);
+        return new ResponseEntity<>(isDeleted, HttpStatus.I_AM_A_TEAPOT);
+
     }
 
     @PostMapping("/sign-up")
