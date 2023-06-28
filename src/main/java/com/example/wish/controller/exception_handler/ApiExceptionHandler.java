@@ -161,6 +161,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(value = {Exception.class})
     public ResponseEntity<ValidationExceptionResponse> handleException(Exception ex) {
+        System.out.println(ex.getClass() + " " + ex.getMessage());
+        System.out.println(ex);
 
         ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR,
                 ZonedDateTime.now(ZoneId.of("Z")),

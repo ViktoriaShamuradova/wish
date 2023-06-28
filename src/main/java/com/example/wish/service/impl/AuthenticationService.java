@@ -133,7 +133,7 @@ public class AuthenticationService {
     @Transactional(readOnly = true)
     public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
         var profile = profileRepository.findByEmail(authRequest.getEmail())
-                .orElseThrow(); //значит по почты не существует, пользователь не зареган - пользователю не нужно знать, что его почта может быть не верна
+                .orElseThrow(() -> new ProfileException("email " + authRequest.getEmail() + " not found")); //значит по почты не существует, пользователь не зареган - пользователю не нужно знать, что его почта может быть не верна
 
         if (profile.getProvider() == Provider.GOOGLE) { //значит, что пароля в бд нет. и юзеру следует использовать другую ссылку для входа
             throw new ProfileException("User registered by google. Need to use url \"/sign-in/google\"\" ");
