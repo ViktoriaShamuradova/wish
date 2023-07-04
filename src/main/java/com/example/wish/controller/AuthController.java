@@ -8,7 +8,6 @@ import com.example.wish.service.ProfileService;
 import com.example.wish.service.SocialService;
 import com.example.wish.service.impl.AuthenticationService;
 import com.example.wish.service.impl.JwtService;
-import com.example.wish.service.impl.ProfileServiceImpl;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import io.swagger.annotations.ApiOperation;
@@ -18,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.message.AuthException;
@@ -34,9 +32,28 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final ProfileService profileService;
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final SocialService<GoogleIdToken> googleSocialService;
+
+    @PostMapping("/sign-up")
+    @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
+            "If the mail is not valid - a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
+            "If email already exist - a response is returned with status BAD_REQUEST with message \"email already exists\"." +
+            "Response is returned with 201 status and body with access and refresh tokens")
+    public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegistrationRequest registerRequest) {
+        AuthResponse authResponse = authenticationService.register(registerRequest);
+        return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/sign-in")
+    @ApiOperation("User authentication. A response is returned with an access token and a refresh token if password correct." +
+            "If email not found in database - response is return bad request with message \"email not found\"" +
+            "If password not correct return response with status bad request and message \"Invalid email or password.\"" +
+            "If user registered by google - response with status bad request and message \"User registered with Google. Please use the Google sign-in URL.\"" +
+            "Response is returned with 200 status and body with access and refresh tokens")
+    public ResponseEntity<AuthResponse> authenticate(@RequestBody @Valid AuthRequest authRequest) {
+        return ResponseEntity.ok(authenticationService.authenticate(authRequest));
+    }
 
     /**
      * send message to verify email.
@@ -58,23 +75,6 @@ public class AuthController {
         return new ResponseEntity<>(isDeleted, HttpStatus.I_AM_A_TEAPOT);
 
     }
-
-    @PostMapping("/sign-up")
-    @ApiOperation("Request - RegisterRequest with email, password and confirmPassword. " +
-            "If the mail is not valid - a response is returned with the status BAD_REQUEST with message \"email not valid\"." +
-            "If email already exist - a response is returned with status BAD_REQUEST with message \"email already exists\"")
-    public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegistrationRequest registerRequest) {
-        AuthResponse authResponse = authenticationService.register(registerRequest);
-        return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
-    }
-
-    @PostMapping("/sign-in")
-    @ApiOperation("User authentication. A response is returned with an access token and a refresh token if password correct." +
-            "If password or email not correct return response with status bad request")
-    public ResponseEntity<AuthResponse> authenticate(@RequestBody @Valid AuthRequest authRequest) {
-        return ResponseEntity.ok(authenticationService.authenticate(authRequest));
-    }
-
     //возвращать тот же токен idTokenString
     //пользователь может войти с помощбю гугла, если он уже зареган(проверяется по почте), то возвращается тот же юзер
     //если нет в базе, то создается новый.

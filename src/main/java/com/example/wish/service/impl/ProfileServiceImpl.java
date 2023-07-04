@@ -1,18 +1,18 @@
 package com.example.wish.service.impl;
 
 import com.example.wish.component.ProfileDtoBuilder;
-import com.example.wish.dto.MainScreenProfileDto;
 import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
 import com.example.wish.entity.Profile;
+import com.example.wish.entity.Socials;
+import com.example.wish.entity.meta_model.Profile_;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.repository.ProfileRepository;
 import com.example.wish.service.ProfileService;
-import com.example.wish.util.DataUtil;
 import com.example.wish.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,16 +21,21 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ReflectionUtils;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 @Service
 public class ProfileServiceImpl implements ProfileService {
@@ -40,15 +45,11 @@ public class ProfileServiceImpl implements ProfileService {
 
     private final ProfileRepository profileRepository;
 
-    @Override
-    public MainScreenProfileDto getMainScreen() {
-        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
-        return profileDtoBuilder.buildMainScreen(profileRepository.findById(currentProfile.getId()).get());
-    }
 
     /**
      * information about own profile for main screen
      */
+    @Transactional(readOnly = true)
     @Override
     public ProfileDto getProfileDto() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
@@ -59,6 +60,84 @@ public class ProfileServiceImpl implements ProfileService {
 
         return profileDtoBuilder.buildProfileDto(profile);
     }
+
+    @Transactional
+    @Override
+    public ProfileDto update(UpdateProfileDetails updateProfileRequest) throws IOException {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        profile.setFirstname(updateProfileRequest.getFirstname());
+        profile.setLastname(updateProfileRequest.getLastname());
+        profile.setPhone(updateProfileRequest.getPhone());
+        profile.setBirthday(updateProfileRequest.getBirthday());
+        profile.setCountry(updateProfileRequest.getCountry());
+        profile.setCity(updateProfileRequest.getCity());
+        profile.setSex(updateProfileRequest.getSex());
+        profile.setSocials(updateProfileRequest.getSocials());
+        profile.setBirthday(updateProfileRequest.getBirthday());
+        profile.setPhoto(updateProfileRequest.getPhoto());
+
+        Profile saved = profileRepository.save(profile);
+
+        return profileDtoBuilder.buildProfileDto(saved);
+    }
+
+    @Transactional
+    @Override
+    public ProfileDto updateByFields(Map<String, Object> fields) {
+
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        Profile profile = profileRepository.findById(currentProfile.getId())
+                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
+
+        fields.forEach((key, value) -> {
+            if (key.equals(Profile_.SOCIALS) && value instanceof Map) {
+                // Handle nested "socials" field
+                Map<String, Object> socialsFields = (Map<String, Object>) value;
+                Socials socials = profile.getSocials();
+                if (socials == null) {
+                    socials = new Socials();
+                }
+                Socials finalSocials = socials;
+                socialsFields.forEach((socialsKey, socialsValue) -> {
+                    Field socialsField = ReflectionUtils.findField(Socials.class, socialsKey);
+                    if (socialsField != null) {
+                        socialsField.setAccessible(true);
+                        ReflectionUtils.setField(socialsField, finalSocials, socialsValue);
+                    }
+                });
+                profile.setSocials(socials);
+            } else {
+                // Handle other fields
+                Field field = ReflectionUtils.findField(Profile.class, key);
+                assert field != null;
+                field.setAccessible(true);
+                if (field.getType() == Date.class && value instanceof String) {
+                    // Convert String value to Date
+                    try {
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        Date dateValue = dateFormat.parse((String) value);
+                        ReflectionUtils.setField(field, profile, dateValue);
+                    } catch (ParseException e) {
+                        throw new IllegalArgumentException("Invalid date format for field: " + key);
+                    }
+                } else if (field.getType().isEnum()) {
+                    // Convert String value to enum
+                    Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
+                    ReflectionUtils.setField(field, profile, enumValue);
+                } else {
+                    ReflectionUtils.setField(field, profile, value);
+                }
+            }
+        });
+
+        Profile saved = profileRepository.save(profile);
+        return profileDtoBuilder.buildProfileDto(saved);
+    }
+
 
     @Override
     @Transactional
@@ -75,7 +154,7 @@ public class ProfileServiceImpl implements ProfileService {
         profileRepository.save(profile);
     }
 
-
+    @Transactional(readOnly = true)
     @Override
     public List<ProfileDto> getFavoriteProfiles() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
@@ -107,6 +186,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     @Override
     public boolean removeProfile(String email) {
         Optional<Profile> byEmail = profileRepository.findByEmail(email);
@@ -119,7 +199,9 @@ public class ProfileServiceImpl implements ProfileService {
 
     }
 
+
     //если тек юзер, то выводить собственные желания незавершенные
+    @Transactional(readOnly = true)
     @Override
     public ProfilesDetails findByUid(String uid) {
         log.info("find profile {} ", uid);
@@ -146,6 +228,7 @@ public class ProfileServiceImpl implements ProfileService {
      * @param request
      * @return
      */
+    @Transactional(readOnly = true)
     @Override
     public Page<ProfilesDetails> find(Pageable pageable, ProfileSearchRequest request) {
         //setWishStatus(request);
@@ -158,34 +241,6 @@ public class ProfileServiceImpl implements ProfileService {
                 .map(profileDtoBuilder::buildProfileDetails);
 
         return new PageImpl<>(searchAnotherProfileStream.collect(Collectors.toList()), pageable, all.getTotalElements());
-    }
-
-    @Override
-    public void update(UpdateProfileDetails updateProfileRequest) throws IOException {
-        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
-
-        Profile profile = profileRepository.findById(currentProfile.getId())
-                .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
-
-        String[] nameParts = {"", ""};
-        if (updateProfileRequest.getName() != null && !updateProfileRequest.getName().isEmpty()) {
-            nameParts = updateProfileRequest.getName().trim().split(" ");
-        }
-        profile.setLastname(DataUtil.capitalizeName(nameParts[0]));
-
-        if (nameParts.length > 1) {
-            profile.setFirstname(DataUtil.capitalizeName(nameParts[1]));
-        }
-        profile.setPhone(updateProfileRequest.getPhone());
-        profile.setBirthday(updateProfileRequest.getBirthday());
-        profile.setCountry(updateProfileRequest.getCountry());
-        profile.setCity(updateProfileRequest.getCity());
-        profile.setSex(updateProfileRequest.getSex());
-        profile.setSocials(updateProfileRequest.getSocials());
-        profile.setBirthday(updateProfileRequest.getBirthday());
-        profile.setPhoto(updateProfileRequest.getPhoto());
-
-        profileRepository.save(profile);
     }
 
 
@@ -217,9 +272,3 @@ public class ProfileServiceImpl implements ProfileService {
 
 }
 
-//   private void setWishStatus(ProfileSearchRequest request) {
-//        if ((request.getTags() != null && !request.getTags().isEmpty())) {
-//            request.setWishStatus(WishStatus.NEW);
-//            request.setParametersForWish(true);
-//        }
-//    }

@@ -13,7 +13,8 @@ import java.util.Date;
 @NoArgsConstructor
 public class UpdateProfileDetails {
 
-    private String name;
+    private String firstname;
+    private String lastname;
     private String phone;
     private Date birthday;
     private String country;

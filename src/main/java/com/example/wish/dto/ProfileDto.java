@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -21,6 +23,7 @@ public class ProfileDto {
         private Sex sex;
         private double karma;
         private Integer age;
+        private Date birthday;
         private String phone;
         private String country;
         private String city;

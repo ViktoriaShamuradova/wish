@@ -1,6 +1,5 @@
 package com.example.wish.controller;
 
-import com.example.wish.dto.MainScreenProfileDto;
 import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/demo/profile")
@@ -28,29 +28,54 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
-    /**
-     * на главную страницу текущего профиля
-     *
-     * @return
-     */
-    @RequestMapping(value = "/my-profile-main")
-    public ResponseEntity<MainScreenProfileDto> myProfile() {
-        MainScreenProfileDto mainScreenProfileDto = profileService.getMainScreen();
-
-        return ResponseEntity.ok(mainScreenProfileDto);
-    }
 
     /**
      * на главную страницу текущего профиля
      *
      * @return
      */
-    @RequestMapping(value = "/my-profile")
+    @GetMapping(value = "/my-profile")
     public ResponseEntity<ProfileDto> getMyProfile() {
         ProfileDto profileDto = profileService.getProfileDto();
-
         return ResponseEntity.ok(profileDto);
     }
+
+    /**
+     * обновляем профиль, нужно указывать все поля, иначе поля сохранять с нулевым значением
+     *
+     * @param profileDetails
+     * @return
+     * @throws IOException
+     */
+    @PutMapping(value = "/my-profile")
+    public ResponseEntity<ProfileDto> update(@RequestBody @Valid UpdateProfileDetails profileDetails) throws IOException {
+
+        ProfileDto profileDto = profileService.update(profileDetails);
+        return ResponseEntity.ok(profileDto);
+    }
+
+    /**
+     * обновляем профиль,
+     * нужно указывать те поля, которые нужно обновить
+     *
+     * @param fields
+     * @return
+     * @throws IOException
+     */
+    @PatchMapping(value = "/my-profile")
+    public ResponseEntity<ProfileDto> updateByFields(@RequestBody Map<String, Object> fields) {
+
+        ProfileDto profileDto = profileService.updateByFields(fields);
+        return ResponseEntity.ok(profileDto);
+    }
+
+//    @DeleteMapping(value = "/my-profile")
+//    public ResponseEntity delete(
+//            @PathVariable String email) {
+//        boolean isDeleted = profileService.deleteProfile();
+//        return new ResponseEntity<>(isDeleted, HttpStatus.I_AM_A_TEAPOT);
+//
+//    }
 
     /**
      * возвращает информацию о профиле (о своем и чужом)/
@@ -73,19 +98,6 @@ public class ProfileController {
         return profileService.find(pageable, request);
     }
 
-    /**
-     * обновляем профиль
-     *
-     * @param profileDetails
-     * @return
-     * @throws IOException
-     */
-    @PutMapping(value = "/update")
-    public ResponseEntity update(@RequestPart("profile") @Valid UpdateProfileDetails profileDetails) throws IOException {
-
-        profileService.update(profileDetails);
-        return ResponseEntity.status(HttpStatus.OK).build();
-    }
 
     @PostMapping("/favorite/{favoriteProfileId}")
     public ResponseEntity addFavoriteProfile(
@@ -107,8 +119,5 @@ public class ProfileController {
         List<ProfileDto> favoriteProfiles = profileService.removeFavoriteProfile(favoriteProfileId);
         return ResponseEntity.ok(favoriteProfiles);
     }
-
-
-
 
 }

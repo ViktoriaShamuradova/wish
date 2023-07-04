@@ -26,7 +26,7 @@ public class Profile_ {
     public static volatile SingularAttribute<Profile, ProfileStatus> status;
     public static volatile SingularAttribute<Profile, ProfileStatusLevel> statusLevel;
     public static volatile SingularAttribute<Profile, Timestamp> created;
-    public static volatile SingularAttribute<Profile, Socials> contact;
+    public static volatile SingularAttribute<Profile, Socials> socials;
     public static volatile SingularAttribute<Profile, Long> id;
     public static volatile SingularAttribute<Profile, Boolean> active;
     public static volatile SingularAttribute<Profile, Role> role;
@@ -47,7 +47,7 @@ public class Profile_ {
     public static final String STATUS = "status";
     public static final String STATUS_LEVEL = "statusLevel";
     public static final String CREATED = "created";
-    public static final String CONTACT = "contact";
+    public static final String SOCIALS = "socials";
     public static final String OWN_WISHES = "ownWishes";
 
 }

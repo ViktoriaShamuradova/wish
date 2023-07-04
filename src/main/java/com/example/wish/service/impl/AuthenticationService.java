@@ -56,6 +56,32 @@ public class AuthenticationService {
     @Value("${generate.uid.max.try.count}")
     private int maxTryCountToGenerate;
 
+    /**
+     * before creating profile user confirmed his email
+     *
+     * @param registerRequest
+     * @return
+     */
+    @Transactional
+    public AuthResponse register(RegistrationRequest registerRequest) {
+        Optional<Profile> byEmail = profileRepository.findByEmail(registerRequest.getEmail());
+
+        if (byEmail.isPresent()) {
+            throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
+        } else {
+            var profile = createProfile(registerRequest);
+            profile.setEnabled(true); //true - потому что перед данным запросом юзер уже получил письмо не почту, а значит доступен
+            Profile saved = profileRepository.save(profile);
+
+            CurrentProfile currentProfile = new CurrentProfile(saved);
+
+            var accessToken = jwtService.generateAccessToken(currentProfile);
+            var refreshToken = jwtService.generateRefreshToken(currentProfile);
+
+            return createAuthResponse(accessToken, refreshToken);
+        }
+    }
+
     @Transactional
     public void verifyEmail(EmailVerificationRequest emailVerificationRequest) {
         boolean isValidEmail = emailValidator.test(emailVerificationRequest.getEmail());
@@ -82,34 +108,7 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * before creating profile user confirmed his email
-     *
-     * @param registerRequest
-     * @return
-     */
-    @Transactional
-    public AuthResponse register(RegistrationRequest registerRequest) {
-        boolean isValidEmail = emailValidator.test(registerRequest.getEmail());
-        if (!isValidEmail) throw new EmailException(registerRequest.getEmail());
 
-        Optional<Profile> byEmail = profileRepository.findByEmail(registerRequest.getEmail());
-
-        if (byEmail.isPresent()) {
-            throw new ProfileExistException("This email " + registerRequest.getEmail() + " already exists");
-        } else {
-            var profile = createProfile(registerRequest);
-            profile.setEnabled(true); //true - потому что перед данным запросом юзер уже получил письмо не почту, а значит доступен
-            profileRepository.save(profile);
-
-            CurrentProfile currentProfile = new CurrentProfile(profile);
-
-            var accessToken = jwtService.generateAccessToken(currentProfile);
-            var refreshToken = jwtService.generateRefreshToken(currentProfile);
-
-            return createAuthResponse(accessToken, refreshToken);
-        }
-    }
 
     @Transactional
     public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
@@ -128,15 +127,13 @@ public class AuthenticationService {
         return createAuthResponse(accessToken, refreshToken);
     }
 
-    //добавить логику проверки: пользователь регистрировался каким образом?
-    //если через гугл, возвращаем исключение, что нужно использовать другой url
     @Transactional(readOnly = true)
     public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
         var profile = profileRepository.findByEmail(authRequest.getEmail())
-                .orElseThrow(() -> new ProfileException("email " + authRequest.getEmail() + " not found")); //значит по почты не существует, пользователь не зареган - пользователю не нужно знать, что его почта может быть не верна
+                .orElseThrow(() -> new ProfileException("Email not found: " + authRequest.getEmail()));
 
-        if (profile.getProvider() == Provider.GOOGLE) { //значит, что пароля в бд нет. и юзеру следует использовать другую ссылку для входа
-            throw new ProfileException("User registered by google. Need to use url \"/sign-in/google\"\" ");
+        if (profile.getProvider() == Provider.GOOGLE) {
+            throw new ProfileException("User registered with Google. Please use the Google sign-in URL.");
         }
 
         try {
@@ -147,9 +144,9 @@ public class AuthenticationService {
                     )
             );
         } catch (BadCredentialsException e) {
-            throw new ProfileException("wrong password or email");
+            throw new ProfileException("Invalid email or password.");
         } catch (AuthenticationException e) {
-            throw new ProfileException("Confirm your email address to log in.");
+            throw new ProfileException("Please confirm your email address to sign in.");
         }
 
         CurrentProfile currentProfile = new CurrentProfile(profile);

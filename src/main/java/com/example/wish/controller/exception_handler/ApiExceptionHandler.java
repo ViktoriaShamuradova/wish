@@ -1,6 +1,7 @@
 package com.example.wish.controller.exception_handler;
 
 import com.example.wish.exception.CantCompleteClientRequestException;
+import com.example.wish.exception.FieldMatchException;
 import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.auth.TokenException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
@@ -15,6 +16,7 @@ import io.jsonwebtoken.security.SignatureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -158,17 +160,50 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(FieldMatchException.class)
+    public ResponseEntity<ValidationExceptionResponse> handleFieldMatchException(FieldMatchException ex) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage(ex.getMessage()));
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
 
     @ExceptionHandler(value = {Exception.class})
     public ResponseEntity<ValidationExceptionResponse> handleException(Exception ex) {
-        System.out.println(ex.getClass() + " " + ex.getMessage());
-        System.out.println(ex);
-
         ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.INTERNAL_SERVER_ERROR,
                 ZonedDateTime.now(ZoneId.of("Z")),
                 createErrorMessage(ex.getMessage()));
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ValidationExceptionResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Throwable rootCause = getRootCause(ex);
+
+        if (rootCause instanceof FieldMatchException) {
+            FieldMatchException fieldMatchException = (FieldMatchException) rootCause;
+            ValidationExceptionResponse errorResponse = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST, ZonedDateTime.now(ZoneId.of("Z")),
+                    createErrorMessage(fieldMatchException.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        // Default error response for other cases
+        ValidationExceptionResponse errorResponse = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST, ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage("Invalid request payload"));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    // Helper method to get the root cause of an exception
+    private Throwable getRootCause(Throwable ex) {
+        Throwable rootCause = ex;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        return rootCause;
+    }
+
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationExceptionResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -186,6 +221,7 @@ public class ApiExceptionHandler {
 
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
+
 
     private Map<String, String> createErrorMessage(String message) {
         Map<String, String> errorMessages = new HashMap<>();
