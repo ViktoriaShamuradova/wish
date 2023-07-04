@@ -118,8 +118,16 @@ public class ProfileServiceImpl implements ProfileService {
                 if (field.getType() == Date.class && value instanceof String) {
                     // Convert String value to Date
                     try {
-                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                        Date dateValue = dateFormat.parse((String) value);
+                        Date dateValue;
+                        SimpleDateFormat dateFormat;
+                        if (((String) value).matches("\\d{4}-\\d{2}-\\d{2}")) {
+                            dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        } else if (((String) value).matches("\\d{2}-\\d{2}-\\d{4}")) {
+                            dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+                        } else {
+                            throw new IllegalArgumentException("Invalid date format for field: " + key);
+                        }
+                        dateValue = dateFormat.parse((String) value);
                         ReflectionUtils.setField(field, profile, dateValue);
                     } catch (ParseException e) {
                         throw new IllegalArgumentException("Invalid date format for field: " + key);
