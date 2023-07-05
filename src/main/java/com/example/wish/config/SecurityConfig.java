@@ -67,7 +67,7 @@ public class SecurityConfig {
 
                 .authorizeRequests()
                 .antMatchers("/v*/demo/auth/**").permitAll()
-                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .antMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement()
@@ -75,9 +75,6 @@ public class SecurityConfig {
                 .and()
                 .authenticationManager(authenticationManager)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-               // .oauth2Login();
-        // .oauth2ResourceServer();
-
 
         return http.build();
     }

@@ -3,45 +3,55 @@ package com.example.wish.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.PathSelectors;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.RequestHandlerSelectors;
 import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger.web.UiConfiguration;
+import springfox.documentation.swagger.web.UiConfigurationBuilder;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
-import java.util.Collections;
+
 
 @Configuration
 @EnableSwagger2
-public class SwaggerConfig {
+@EnableWebMvc
+public class SwaggerConfig  {//implements WebMvcConfigurer
 
     @Value("${server.servlet.context-path}")
     private String contextPath;
-
-//    @Bean
-//    public Docket api() {
-//        return new Docket(DocumentationType.SWAGGER_2)
-//                .select()
-//                .apis(RequestHandlerSelectors.basePackage("com.example.wish"))
-//                .paths(PathSelectors.any())
-//                .build();
-//    }
 
     @Bean
     public Docket api() {
         return new Docket(DocumentationType.SWAGGER_2)
                 .select()
                 .apis(RequestHandlerSelectors.basePackage("com.example.wish"))
-                .paths(PathSelectors.any())
                 .build()
-                .pathMapping(contextPath)
-               .apiInfo(apiInfo());
+                .apiInfo(apiInfo())
+                .pathMapping(contextPath);
     }
 
-    private ApiInfo apiInfo() {
-        // Set your API information (title, description, version, etc.) here
-        return new ApiInfo("Your API", "API description", "API version", "", null, "", "", Collections.emptyList());
+    @Bean
+    public ApiInfo apiInfo() {
+        return new ApiInfoBuilder()
+                .title("Your API Title")
+                .description("Your API Description")
+                .version("1.0.0")
+                .build();
     }
 
+    @Bean
+    public UiConfiguration uiConfiguration() {
+        return UiConfigurationBuilder.builder()
+                .displayRequestDuration(true)
+                .build();
+    }
+
+//    @Bean
+//    public RestTemplate restTemplate() {
+//        return new RestTemplate();
+//    }
 }
