@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -207,20 +208,29 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationExceptionResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
-
         Map<String, String> errorMessages = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errorMessages.put(fieldName, errorMessage);
+            if (error instanceof FieldError) {
+                String fieldName = ((FieldError) error).getField();
+                String errorMessage = error.getDefaultMessage();
+                errorMessages.put(fieldName, errorMessage);
+            } else if (error instanceof ObjectError) {
+                String objectName = ((ObjectError) error).getObjectName();
+                String errorMessage = error.getDefaultMessage();
+                errorMessages.put(objectName, errorMessage);
+            }
         });
 
-        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+        ValidationExceptionResponse response = new ValidationExceptionResponse(
+                HttpStatus.BAD_REQUEST,
                 ZonedDateTime.now(ZoneId.of("Z")),
-                errorMessages);
+                errorMessages
+        );
 
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
+
+
 
 
     private Map<String, String> createErrorMessage(String message) {

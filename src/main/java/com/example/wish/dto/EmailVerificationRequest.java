@@ -1,16 +1,26 @@
 package com.example.wish.dto;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import com.example.wish.annotation.ValidEmail;
+import lombok.*;
+
+import javax.validation.constraints.NotNull;
 
 @Getter
-@RequiredArgsConstructor
+@EqualsAndHashCode
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
 public class EmailVerificationRequest {
 
-   // @Email(message = "not valid email") некорректно отображается ошибка, посмотреть этот момент. Оставляем пока проверку валидности в сервисе
-    private final String email;
-    //сюда можно аннотацию проверки на пятизначность
-    private final String otp;
+    @NotNull
+    @ValidEmail
+    private String email;
 
-    private final boolean isRegistration;
+    @NotNull
+    private String otp;
+
+    @NotNull
+    private boolean isRegistration;
+
+
 }

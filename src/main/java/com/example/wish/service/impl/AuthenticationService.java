@@ -4,7 +4,6 @@ import com.example.wish.component.NotificationManagerService;
 import com.example.wish.dto.*;
 import com.example.wish.entity.*;
 import com.example.wish.exception.CantCompleteClientRequestException;
-import com.example.wish.exception.auth.EmailException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
@@ -82,51 +81,6 @@ public class AuthenticationService {
         }
     }
 
-    @Transactional
-    public void verifyEmail(EmailVerificationRequest emailVerificationRequest) {
-        boolean isValidEmail = emailValidator.test(emailVerificationRequest.getEmail());
-        if (!isValidEmail) throw new EmailException(emailVerificationRequest.getEmail());
-        Optional<Profile> byEmail = profileRepository.findByEmail(emailVerificationRequest.getEmail());
-
-        if (emailVerificationRequest.isRegistration()) {
-            if (byEmail.isPresent()) {
-                LOGGER.info("email exist for registration");
-
-                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
-            }
-            LOGGER.info("send email");
-            notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
-                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
-        } else {
-            if (byEmail.isEmpty()) {
-                LOGGER.info("empty email");
-                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " does not exists");
-            }
-            LOGGER.info("send email for updating password");
-            notificationManagerService.sendOnePasswordForResetPassword(emailVerificationRequest.getEmail(),
-                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_PASSWORD);
-        }
-    }
-
-
-
-    @Transactional
-    public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
-        Profile profile = profileRepository.findByEmail(updatePasswordRequest.getEmail())
-                .orElseThrow(() -> new ProfileException("email " + updatePasswordRequest.getEmail() + " not found"));
-
-        profile.setPassword(passwordEncoder.encode(updatePasswordRequest.getPassword()));
-
-        profileRepository.save(profile);
-
-        CurrentProfile currentProfile = new CurrentProfile(profile);
-
-        var accessToken = jwtService.generateAccessToken(currentProfile);
-        var refreshToken = jwtService.generateRefreshToken(currentProfile);
-
-        return createAuthResponse(accessToken, refreshToken);
-    }
-
     @Transactional(readOnly = true)
     public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
         var profile = profileRepository.findByEmail(authRequest.getEmail())
@@ -156,6 +110,43 @@ public class AuthenticationService {
 
         return createAuthResponse(accessToken, refreshToken);
     }
+
+    @Transactional
+    public void verifyEmail(EmailVerificationRequest emailVerificationRequest) {
+        Optional<Profile> byEmail = profileRepository.findByEmail(emailVerificationRequest.getEmail());
+
+        if (emailVerificationRequest.isRegistration()) {
+            if (byEmail.isPresent()) {
+                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " already exists");
+            }
+            notificationManagerService.sendOnePasswordForEmailVerification(emailVerificationRequest.getEmail(),
+                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_REGISTRATION);
+        } else {
+            if (byEmail.isEmpty()) {
+                throw new ProfileExistException("This email " + emailVerificationRequest.getEmail() + " does not exists");
+            }
+            notificationManagerService.sendOnePasswordForResetPassword(emailVerificationRequest.getEmail(),
+                    emailVerificationRequest.getOtp(), EXPIRE_MINUTES_FOR_PASSWORD);
+        }
+    }
+
+    @Transactional
+    public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
+        Profile profile = profileRepository.findByEmail(updatePasswordRequest.getEmail())
+                .orElseThrow(() -> new ProfileException("email " + updatePasswordRequest.getEmail() + " not found"));
+
+        profile.setPassword(passwordEncoder.encode(updatePasswordRequest.getPassword()));
+
+        profileRepository.save(profile);
+
+        CurrentProfile currentProfile = new CurrentProfile(profile);
+
+        var accessToken = jwtService.generateAccessToken(currentProfile);
+        var refreshToken = jwtService.generateRefreshToken(currentProfile);
+
+        return createAuthResponse(accessToken, refreshToken);
+    }
+
 
     private String generateProfileUid(String email) {
         String baseUid = DataBuilder.buildProfileUid(email);
