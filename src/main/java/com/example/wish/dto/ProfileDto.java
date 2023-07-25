@@ -4,6 +4,7 @@ import com.example.wish.entity.Socials;
 import com.example.wish.entity.ProfileStatus;
 import com.example.wish.entity.ProfileStatusLevel;
 import com.example.wish.entity.Sex;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,8 @@ public class ProfileDto {
         private Sex sex;
         private double karma;
         private Integer age;
+
+        @JsonFormat(pattern = "yyyy-MM-dd")
         private Date birthday;
         private String phone;
         private String country;
