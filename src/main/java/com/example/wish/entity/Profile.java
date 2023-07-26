@@ -74,7 +74,7 @@ public class Profile implements Serializable {
 
     @Column(name = "country")
     @Enumerated(EnumType.STRING)
-    private CountryCode country;
+    private CountryCode countryCode;
 
     @Column()
     @Size(max = 100)
@@ -191,7 +191,7 @@ public class Profile implements Serializable {
                 ", birthday=" + birthday +
                 ", sex=" + sex +
                 ", phone='" + phone + '\'' +
-                ", country='" + country + '\'' +
+                ", countryCode='" + countryCode + '\'' +
                 ", city='" + city + '\'' +
                 ", karma=" + karma +
                 ", status=" + status +

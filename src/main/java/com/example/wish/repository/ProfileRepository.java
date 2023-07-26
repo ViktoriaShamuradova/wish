@@ -61,7 +61,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long>,
                 }
 
                 if (searchRequest.getCountry() != null) {
-                    predicates.add(cb.equal(root.get(Profile_.COUNTRY), searchRequest.getCountry()));
+                    predicates.add(cb.equal(root.get(Profile_.COUNTRY_CODE), searchRequest.getCountry()));
                 }
 
                 if (searchRequest.getProfileSex() != null) {

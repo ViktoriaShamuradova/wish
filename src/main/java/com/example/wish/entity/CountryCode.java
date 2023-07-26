@@ -263,12 +263,12 @@ public enum CountryCode {
     }
 
     // Helper method to get the CountryCode from a given country name
-    public static CountryCode fromCountryName(String countryName) {
+    public static CountryCode fromCountryName(String countryCode) {
         for (CountryCode code : CountryCode.values()) {
-            if (code.name().equalsIgnoreCase(countryName)) {
+            if (code.name().equalsIgnoreCase(countryCode)) {
                 return code;
             }
         }
-        throw new IllegalArgumentException("Invalid country name: " + countryName);
+        throw new IllegalArgumentException("Invalid country code: " + countryCode);
     }
     }

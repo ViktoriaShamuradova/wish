@@ -74,7 +74,7 @@ public class ProfileServiceImpl implements ProfileService {
         profile.setLastname(updateProfileRequest.getLastname());
         profile.setPhone(updateProfileRequest.getPhone());
         profile.setBirthday(updateProfileRequest.getBirthday());
-        profile.setCountry(updateProfileRequest.getCountry());
+        profile.setCountryCode(updateProfileRequest.getCountryCode());
         profile.setCity(updateProfileRequest.getCity());
         profile.setSex(updateProfileRequest.getSex());
         profile.setSocials(updateProfileRequest.getSocials());

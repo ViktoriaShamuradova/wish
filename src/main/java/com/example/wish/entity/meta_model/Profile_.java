@@ -20,7 +20,7 @@ public class Profile_ {
     public static volatile SingularAttribute<Profile, Date> birthday;
     public static volatile SingularAttribute<Profile, Sex> sex;
     public static volatile SingularAttribute<Profile, String> phone;
-    public static volatile SingularAttribute<Profile, CountryCode> country;
+    public static volatile SingularAttribute<Profile, CountryCode> countryCode;
     public static volatile SingularAttribute<Profile, String> city;
     public static volatile SingularAttribute<Profile, Double> karma;
     public static volatile SingularAttribute<Profile, ProfileStatus> status;
@@ -40,7 +40,7 @@ public class Profile_ {
     public static final String BIRTHDAY = "birthday";
     public static final String SEX = "sex";
     public static final String PHONE = "phone";
-    public static final String COUNTRY = "country";
+    public static final String COUNTRY_CODE = "countryCode";
     public static final String ID = "id";
     public static final String CITY = "city";
     public static final String KARMA = "karma";

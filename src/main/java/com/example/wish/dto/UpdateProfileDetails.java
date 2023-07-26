@@ -18,7 +18,7 @@ public class UpdateProfileDetails {
     private String lastname;
     private String phone;
     private Date birthday;
-    private CountryCode country;
+    private CountryCode countryCode;
     private String city;
     private Sex sex;
     private Socials socials;

@@ -80,7 +80,7 @@ public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificat
                 }
 
                 if (searchRequest.getCountry() != null) {
-                    predicates.add(cb.equal(profile.get(Profile_.COUNTRY), searchRequest.getCountry()));
+                    predicates.add(cb.equal(profile.get(Profile_.COUNTRY_CODE), searchRequest.getCountry()));
                 }
 
                 if (searchRequest.getTitle() != null) {

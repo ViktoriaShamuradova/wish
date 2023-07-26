@@ -25,7 +25,9 @@ public class ProfileDto {
         @JsonFormat(pattern = "yyyy-MM-dd")
         private Date birthday;
         private String phone;
-        private CountryCode country;
+        private CountryCode countryCode;
+        private String countryName;
+
         private String city;
         private ProfileStatus status;
         private ProfileStatusLevel statusLevel;

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -57,7 +58,12 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
 
     @Override
     public ProfileDto buildProfileDto(Profile profile) {
-        return profileMapper.convertToDto(profile);
+        ProfileDto profileDto = profileMapper.convertToDto(profile);
+        String code = profile.getCountryCode().getCode().toUpperCase();
+        Locale l = new Locale("", code);
+        String country = l.getDisplayCountry();
+        profileDto.setCountryName(country);
+        return profileDto;
     }
 
     private List<AbstractWishDto> findOwnNewWishes(Long profileId) {
