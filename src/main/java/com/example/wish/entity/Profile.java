@@ -72,7 +72,7 @@ public class Profile implements Serializable {
     @Size(max = 20)
     private String phone;
 
-    @Column(name = "country")
+    @Column(name = "country_code")
     @Enumerated(EnumType.STRING)
     private CountryCode countryCode;
 

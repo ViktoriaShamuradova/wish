@@ -11,12 +11,10 @@ import com.example.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -59,10 +57,7 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
     @Override
     public ProfileDto buildProfileDto(Profile profile) {
         ProfileDto profileDto = profileMapper.convertToDto(profile);
-        String code = profile.getCountryCode().getCode().toUpperCase();
-        Locale l = new Locale("", code);
-        String country = l.getDisplayCountry();
-        profileDto.setCountryName(country);
+
         return profileDto;
     }
 
@@ -114,9 +109,6 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
 
         return new PageImpl<>(ownWishesDto, ownWishes.getPageable(), ownWishes.getTotalElements());
     }
-
-
-
 
 
     private List<ExecutingWishDto> findExecutingWishesDto(Long profileId) {

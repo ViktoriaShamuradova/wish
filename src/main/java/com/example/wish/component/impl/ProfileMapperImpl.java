@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @RequiredArgsConstructor
 @Component
 public class ProfileMapperImpl implements ProfileMapper {
@@ -17,7 +19,15 @@ public class ProfileMapperImpl implements ProfileMapper {
 
     @Override
     public ProfileDto convertToDto(Profile profile) {
-        return modelMapper.map(profile, ProfileDto.class);
+        ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+        if (profile.getCountryCode() != null) {
+            String code = profile.getCountryCode().getCode().toUpperCase();
+            Locale l = new Locale("", code);
+            String country = l.getDisplayCountry();
+            profileDto.setCountryName(country);
+        }
+
+        return profileDto;
     }
 
     @Override
