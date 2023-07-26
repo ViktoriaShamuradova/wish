@@ -20,7 +20,7 @@ public class Profile_ {
     public static volatile SingularAttribute<Profile, Date> birthday;
     public static volatile SingularAttribute<Profile, Sex> sex;
     public static volatile SingularAttribute<Profile, String> phone;
-    public static volatile SingularAttribute<Profile, String> country;
+    public static volatile SingularAttribute<Profile, CountryCode> country;
     public static volatile SingularAttribute<Profile, String> city;
     public static volatile SingularAttribute<Profile, Double> karma;
     public static volatile SingularAttribute<Profile, ProfileStatus> status;

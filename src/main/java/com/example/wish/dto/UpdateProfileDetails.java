@@ -1,5 +1,6 @@
 package com.example.wish.dto;
 
+import com.example.wish.entity.CountryCode;
 import com.example.wish.entity.Socials;
 import com.example.wish.entity.Sex;
 import lombok.AllArgsConstructor;
@@ -17,7 +18,7 @@ public class UpdateProfileDetails {
     private String lastname;
     private String phone;
     private Date birthday;
-    private String country;
+    private CountryCode country;
     private String city;
     private Sex sex;
     private Socials socials;

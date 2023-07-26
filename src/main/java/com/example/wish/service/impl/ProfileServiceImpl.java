@@ -4,6 +4,7 @@ import com.example.wish.component.ProfileDtoBuilder;
 import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
+import com.example.wish.entity.CountryCode;
 import com.example.wish.entity.Profile;
 import com.example.wish.entity.Socials;
 import com.example.wish.entity.meta_model.Profile_;
@@ -133,14 +134,37 @@ public class ProfileServiceImpl implements ProfileService {
                         throw new IllegalArgumentException("Invalid date format for field: " + key);
                     }
                 } else if (field.getType().isEnum()) {
-                    // Convert String value to enum
-                    Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
-                    ReflectionUtils.setField(field, profile, enumValue);
+                    // Check if the field is an enum of CountryCode
+                        if (CountryCode.class.isAssignableFrom(field.getType())) {
+                            // Convert String value to CountryCode enum
+                            CountryCode enumValue = CountryCode.fromCountryName(value.toString());
+                            ReflectionUtils.setField(field, profile, enumValue);
+                        } else {
+                            // For other enums, convert String value to the corresponding enum
+                            Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
+                            ReflectionUtils.setField(field, profile, enumValue);
+                        }
+
                 } else {
                     ReflectionUtils.setField(field, profile, value);
                 }
             }
         });
+
+        //else if (field.getType().isEnum()) {
+        //    // Check if the field is an enum of CountryCode
+        //    if (CountryCode.class.isAssignableFrom(field.getType())) {
+        //        // Convert String value to CountryCode enum
+        //        CountryCode enumValue = CountryCode.valueOf(value.toString());
+        //        ReflectionUtils.setField(field, profile, enumValue);
+        //    } else {
+        //        // For other enums, convert String value to the corresponding enum
+        //        Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
+        //        ReflectionUtils.setField(field, profile, enumValue);
+        //    }
+        //} else {
+        //    ReflectionUtils.setField(field, profile, value);
+        //}
 
         Profile saved = profileRepository.save(profile);
         return profileDtoBuilder.buildProfileDto(saved);

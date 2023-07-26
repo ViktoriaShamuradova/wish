@@ -3,7 +3,6 @@ package com.example.wish.controller;
 import com.example.wish.dto.ProfileDto;
 import com.example.wish.dto.ProfilesDetails;
 import com.example.wish.dto.UpdateProfileDetails;
-import com.example.wish.entity.Profile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.service.ProfileService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +41,7 @@ public class ProfileController {
 
     /**
      * обновляем профиль, нужно указывать все поля, иначе поля сохранять с нулевым значением
+     * не использовать его. deprecated, exception
      *
      * @param profileDetails
      * @return

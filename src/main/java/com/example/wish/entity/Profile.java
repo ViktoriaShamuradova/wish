@@ -72,9 +72,9 @@ public class Profile implements Serializable {
     @Size(max = 20)
     private String phone;
 
-    @Column
-    @Size(max = 60)
-    private String country;
+    @Column(name = "country")
+    @Enumerated(EnumType.STRING)
+    private CountryCode country;
 
     @Column()
     @Size(max = 100)
@@ -131,7 +131,6 @@ public class Profile implements Serializable {
         this.favoriteProfiles = favoriteProfiles;
     }
 
-    // Helper methods
 
     public void addFavoriteProfile(Profile profile) {
         favoriteProfiles.add(profile);

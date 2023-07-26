@@ -1,9 +1,6 @@
 package com.example.wish.dto;
 
-import com.example.wish.entity.Socials;
-import com.example.wish.entity.ProfileStatus;
-import com.example.wish.entity.ProfileStatusLevel;
-import com.example.wish.entity.Sex;
+import com.example.wish.entity.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,7 +25,7 @@ public class ProfileDto {
         @JsonFormat(pattern = "yyyy-MM-dd")
         private Date birthday;
         private String phone;
-        private String country;
+        private CountryCode country;
         private String city;
         private ProfileStatus status;
         private ProfileStatusLevel statusLevel;

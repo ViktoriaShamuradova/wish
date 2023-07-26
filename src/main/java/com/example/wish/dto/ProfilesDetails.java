@@ -1,9 +1,6 @@
 package com.example.wish.dto;
 
-import com.example.wish.entity.Socials;
-import com.example.wish.entity.ProfileStatus;
-import com.example.wish.entity.ProfileStatusLevel;
-import com.example.wish.entity.Sex;
+import com.example.wish.entity.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,7 +19,7 @@ public class ProfilesDetails {
     private double karma;
     private Integer age;
     private String phone;
-    private String country;
+    private CountryCode country;
     private String city;
     private ProfileStatus status;
     private ProfileStatusLevel statusLevel;
