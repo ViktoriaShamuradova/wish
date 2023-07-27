@@ -2,6 +2,7 @@ package com.example.wish.repository;
 
 import com.example.wish.entity.FinishWishStatus;
 import com.example.wish.entity.FinishedWish;
+import com.example.wish.entity.WishStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -18,8 +19,8 @@ public interface FinishedWishRepository extends JpaRepository<FinishedWish, Long
 
     List<FinishedWish> findByStatusAndWishOwnProfileId(FinishWishStatus status, Long ownProfileId);
 
-    List<FinishedWish> findByStatusAndExecutedProfileId(FinishWishStatus status, Long executedProfileId);
 
+    List<FinishedWish> findByExecutedProfileIdAndStatusIn( Long executedProfileId, List<FinishWishStatus> statuses);
 
 
 }

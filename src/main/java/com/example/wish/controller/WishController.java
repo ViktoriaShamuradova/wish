@@ -36,12 +36,25 @@ public class WishController {
     /**
      * Возвращает собственные желания текущего юзера для главного экрана в статусе new,
      * in_progress
-     *
+     * /own-main возможно так для урла будет лучше
      * @return
      */
     @GetMapping("/own")
-    public ResponseEntity<List<AbstractWishDto>> getOwnWishesInProgress() {
-        return ResponseEntity.ok(wishService.getOwmWishesInProgress());
+    public ResponseEntity<List<AbstractWishDto>> getOwnWishesMainScreen() {
+        return ResponseEntity.ok(wishService.getOwmWishesMainScreen());
+    }
+
+    /**
+     * Возвращает другие желания, который текущий юзер исполняет  для главного экрана
+     * пока только в статусе
+     * статус in-progress, finish_failed - например возвращать определенное количество дней. Далее помещается в историю
+     * in_progress
+     *
+     * @return
+     */
+    @GetMapping("/another-main")
+    public ResponseEntity<List<AbstractWishDto>> getAnotherWishesMainScreen() {
+        return ResponseEntity.ok(wishService.getAnotherWishesMainScreen());
     }
 
     /**

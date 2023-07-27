@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 public class WishMapperImpl implements WishMapper {
 
     private final ModelMapper modelMapper;
-    private final KarmaCounter karmaCounter;
 
     @Override
     public Wish convertToEntity(AbstractWishDto abstDto) {
@@ -60,8 +59,7 @@ public class WishMapperImpl implements WishMapper {
         ExecutingWishDto executingWishDto = modelMapper.map(executingWish, ExecutingWishDto.class);
         if (executingWishDto.getExecutingStatus() == ExecuteStatus.IN_PROGRESS_ANONYMOUS) {
             executingWishDto.setExecutingProfileId(null);
-            executingWishDto.setExecutingProfileUid(null);
-            executingWishDto.setExecutingProfilePhoto(null);
+
         }
         executingWishDto.setWishId(executingWish.getWish().getId());
         executingWishDto.setPhoto(executingWish.getWish().getPhoto());
@@ -86,18 +84,11 @@ public class WishMapperImpl implements WishMapper {
 
         finishedWishDto.setEarnKarma(w.getEarnKarma());
         finishedWishDto.setPhoto(w.getWish().getPhoto());
-        finishedWishDto.setOwnProfileUid(w.getWish().getOwnProfile().getUid());
-        finishedWishDto.setOwnProfileFullName(w.getWish().getOwnProfile().getLastName() + " " + w.getWish().getOwnProfile().getFirstName());
 
         if (finishedWishDto.getStatus() == FinishWishStatus.FINISHED_FAILED_ANONYMOUS) {
             finishedWishDto.setExecutedProfileId(null);
-            finishedWishDto.setExecutedProfileUid(null);
-            finishedWishDto.setExecutedProfilePhoto(null);
         } else {
             finishedWishDto.setExecutedProfileId(w.getExecutedProfile().getId());
-            finishedWishDto.setExecutedProfileUid(w.getExecutedProfile().getUid());
-            finishedWishDto.setExecutedProfilePhoto(w.getExecutedProfile().getPhoto());
-
         }
 
         return finishedWishDto;

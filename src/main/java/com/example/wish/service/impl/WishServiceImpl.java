@@ -4,7 +4,9 @@ import com.example.wish.component.KarmaCounter;
 import com.example.wish.component.NotificationManagerService;
 import com.example.wish.component.ProfileDtoBuilder;
 import com.example.wish.component.WishMapper;
-import com.example.wish.dto.*;
+import com.example.wish.dto.AbstractWishDto;
+import com.example.wish.dto.MainScreenProfileDto;
+import com.example.wish.dto.SearchScreenWishDto;
 import com.example.wish.dto.wish.*;
 import com.example.wish.entity.*;
 import com.example.wish.exception.profile.ProfileException;
@@ -246,19 +248,63 @@ public class WishServiceImpl implements WishService {
     }
 
     /**
-     * get own wishes in progress or new
-     * проверить, чтобы не возвращали желания, которые уже завершены
+     * get own wishes in progress or new main screen
+     * - проверить, чтобы не возвращали желания, которые уже завершены - не возвращает. написать для этого тесты
      *
      * @return
      */
     @Override
-    public List<AbstractWishDto> getOwmWishesInProgress() {
+    public List<AbstractWishDto> getOwmWishesMainScreen() {
         CurrentProfile currentProfile = authenticationService.getCurrentProfile();
         List<Wish> ownWishes = wishRepository.findByOwnProfileIdAndStatusIn(currentProfile.getId(),
                 List.of(WishStatus.NEW, WishStatus.IN_PROGRESS));
 
         return convertIfWishInProgress(ownWishes);
     }
+
+    /**
+     * Возвращает другие желания, который текущий юзер исполняет  для главного экрана
+     * статус in-progress, finish_failed - например возвращать определенное количество дней. Далее помещается в историю
+     * in_progress
+     *
+     * @return
+     */
+    @Override
+    public List<AbstractWishDto> getAnotherWishesMainScreen() {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        List<AbstractWishDto> executingWishesDto = findExecutingWishesDto(currentProfile.getId());
+        List<AbstractWishDto> finishedFailedWishDto =
+                findFinishedWishDto(List.of(FinishWishStatus.FINISHED_FAILED,
+                        FinishWishStatus.FINISHED_FAILED_ANONYMOUS), currentProfile.getId());
+
+        executingWishesDto.addAll(finishedFailedWishDto);
+        return executingWishesDto;
+    }
+
+    private List<AbstractWishDto> findFinishedWishDto(List<FinishWishStatus> statuses, long profileId) {
+        return finishedWishRepository.findByExecutedProfileIdAndStatusIn(profileId, statuses)
+                .stream()
+                .map(wishMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+
+    private List<AbstractWishDto> findExecutingWishesDto(Long profileId) {
+        return executingWishRepository.findByExecutingProfileId(profileId)
+                .stream()
+                .map(wishMapper::convertToDto)
+                .collect(Collectors.toList());
+    }
+//    private List<ExecutingWishDto> findExecutingWishesDto(Long profileId) {
+//        //ищем желания, которые ты исполняешь
+//        List<ExecutingWish> executingWishes = executingWishRepository.findByExecutingProfileId(profileId);
+//        List<ExecutingWishDto> executingWishesDto = new ArrayList<>();
+//        for (ExecutingWish w : executingWishes) {
+//            executingWishesDto.add(wishMapper.convertToDto(w));
+//        }
+//        return executingWishesDto;
+//    }
 
     //возвращает собственное желание в любом статусе
     // принадлежит ли это желание текущему профилю
@@ -336,6 +382,7 @@ public class WishServiceImpl implements WishService {
 
     /**
      * отображают желание не из истории
+     *
      * @param id
      * @return
      */
@@ -407,16 +454,16 @@ public class WishServiceImpl implements WishService {
 
         StoryWishDto storyWish = new StoryWishDto();
         List<FinishedWish> finishedWishesAnother = finishedWishRepository
-                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_SUCCESS, currentProfile.getId());
-        List<FinishedWish> finishedAnonymousWishesAnother = finishedWishRepository
-                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_SUCCESS_ANONYMOUS, currentProfile.getId());
-        finishedWishesAnother.addAll(finishedAnonymousWishesAnother);
+                .findByExecutedProfileIdAndStatusIn(currentProfile.getId(),
+                        List.of(FinishWishStatus.FINISHED_SUCCESS, FinishWishStatus.FINISHED_SUCCESS_ANONYMOUS)
+                );
+
 
         List<FinishedWish> notFinishedWishesAnother = finishedWishRepository
-                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_FAILED, currentProfile.getId());
-        List<FinishedWish> notFinishedAnonymousWishesAnother = finishedWishRepository
-                .findByStatusAndExecutedProfileId(FinishWishStatus.FINISHED_FAILED_ANONYMOUS, currentProfile.getId());
-        notFinishedWishesAnother.addAll(notFinishedAnonymousWishesAnother);
+                .findByExecutedProfileIdAndStatusIn(currentProfile.getId(),
+                        List.of(FinishWishStatus.FINISHED_SUCCESS, FinishWishStatus.FINISHED_SUCCESS_ANONYMOUS)
+                );
+
 
         List<FinishedWish> ownFinished = finishedWishRepository.findByWishOwnProfileId(currentProfile.getId());
         List<Wish> ownWishesDeleted = wishRepository.findByOwnProfileIdAndStatus(currentProfile.getId(), WishStatus.DELETED);

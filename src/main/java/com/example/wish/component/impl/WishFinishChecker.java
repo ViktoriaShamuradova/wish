@@ -55,7 +55,6 @@ public class WishFinishChecker {
         wish.setStatus(WishStatus.NEW);
         wishRepository.save(wish);
 
-
         notificationManagerService.sendFinishFailedWishToExecutor(executingWish);
         notificationManagerService.sendFinishFailedWishToOwner(executingWish);
     }

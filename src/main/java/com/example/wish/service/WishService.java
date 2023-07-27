@@ -40,9 +40,10 @@ public interface WishService {
 
     StoryWishDto getStoryWish();
 
-    List<AbstractWishDto> getOwmWishesInProgress();
+    List<AbstractWishDto> getOwmWishesMainScreen();
 
    AbstractWishDto getOwmWish(long wishId);
 
 
+    List<AbstractWishDto>  getAnotherWishesMainScreen();
 }
