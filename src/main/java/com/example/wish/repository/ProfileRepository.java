@@ -40,16 +40,16 @@ public interface ProfileRepository extends JpaRepository<Profile, Long>,
                 final List<Predicate> predicates = new ArrayList<>();
 
                 if (searchRequest.getFirstname() != null && searchRequest.getLastname() != null) {
-                    predicates.add(cb.and(cb.like(root.get(Profile_.FIRSTNAME), "%" + searchRequest.getFirstname() + "%"),
-                            cb.like(root.get(Profile_.LASTNAME), "%" + searchRequest.getLastname() + "%")));
+                    predicates.add(cb.and(cb.like(root.get(Profile_.FIRST_NAME), "%" + searchRequest.getFirstname() + "%"),
+                            cb.like(root.get(Profile_.LAST_NAME), "%" + searchRequest.getLastname() + "%")));
                 }
 
                 if (searchRequest.getFirstname() == null && searchRequest.getLastname() != null) {
-                    predicates.add(cb.like(root.get(Profile_.LASTNAME), "%" + searchRequest.getLastname() + "%"));
+                    predicates.add(cb.like(root.get(Profile_.LAST_NAME), "%" + searchRequest.getLastname() + "%"));
                 }
 
                 if (searchRequest.getFirstname() != null && searchRequest.getLastname() == null) {
-                    predicates.add(cb.like(root.get(Profile_.FIRSTNAME), "%" + searchRequest.getFirstname() + "%"));
+                    predicates.add(cb.like(root.get(Profile_.FIRST_NAME), "%" + searchRequest.getFirstname() + "%"));
                 }
 
                 if (searchRequest.getProfileStatus() != null) {

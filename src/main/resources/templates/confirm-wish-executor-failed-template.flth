@@ -1,7 +1,7 @@
 <html>
 <head></head>
 <body>
-    <p>Hello, ${firstname?default("Angel")}!</p>
+    <p>Hello, ${firstName?default("Angel")}!</p>
     <p>Что-то пошло не так и ваше желание не подтвердили, что вы его исполнили</b></p>
 
 </body>

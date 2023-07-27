@@ -1,14 +1,13 @@
 package com.example.wish.service.impl;
 
 import com.example.wish.component.ProfileDtoBuilder;
-import com.example.wish.dto.ProfileDto;
-import com.example.wish.dto.ProfilesDetails;
-import com.example.wish.dto.UpdateProfileDetails;
+import com.example.wish.dto.profile.ProfileDto;
+import com.example.wish.dto.profile.ProfilesDetails;
+import com.example.wish.dto.profile.UpdateProfileDetails;
 import com.example.wish.entity.CountryCode;
 import com.example.wish.entity.Profile;
 import com.example.wish.entity.Socials;
 import com.example.wish.entity.meta_model.Profile_;
-import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileUpdateException;
@@ -72,8 +71,8 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = profileRepository.findById(currentProfile.getId())
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
 
-        profile.setFirstname(updateProfileRequest.getFirstname());
-        profile.setLastname(updateProfileRequest.getLastname());
+        profile.setFirstName(updateProfileRequest.getFirstName());
+        profile.setLastName(updateProfileRequest.getLastName());
         profile.setPhone(updateProfileRequest.getPhone());
         profile.setBirthday(updateProfileRequest.getBirthday());
         profile.setCountryCode(updateProfileRequest.getCountryCode());

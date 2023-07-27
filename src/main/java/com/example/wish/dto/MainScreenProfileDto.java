@@ -1,5 +1,6 @@
 package com.example.wish.dto;
 
+import com.example.wish.dto.wish.ExecutingWishDto;
 import com.example.wish.entity.ProfileStatus;
 import com.example.wish.entity.ProfileStatusLevel;
 import lombok.AllArgsConstructor;

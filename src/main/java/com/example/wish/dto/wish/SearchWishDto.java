@@ -1,4 +1,4 @@
-package com.example.wish.dto;
+package com.example.wish.dto.wish;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

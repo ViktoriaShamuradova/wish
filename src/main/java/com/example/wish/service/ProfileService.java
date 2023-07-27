@@ -1,8 +1,8 @@
 package com.example.wish.service;
 
-import com.example.wish.dto.ProfileDto;
-import com.example.wish.dto.ProfilesDetails;
-import com.example.wish.dto.UpdateProfileDetails;
+import com.example.wish.dto.profile.ProfileDto;
+import com.example.wish.dto.profile.ProfilesDetails;
+import com.example.wish.dto.profile.UpdateProfileDetails;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

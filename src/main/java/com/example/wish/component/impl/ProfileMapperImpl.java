@@ -2,8 +2,8 @@ package com.example.wish.component.impl;
 
 import com.example.wish.component.ProfileMapper;
 import com.example.wish.dto.MainScreenProfileDto;
-import com.example.wish.dto.ProfileDto;
-import com.example.wish.dto.ProfilesDetails;
+import com.example.wish.dto.profile.ProfileDto;
+import com.example.wish.dto.profile.ProfilesDetails;
 import com.example.wish.entity.Profile;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;

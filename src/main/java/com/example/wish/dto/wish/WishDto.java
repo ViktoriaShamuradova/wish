@@ -1,19 +1,18 @@
-package com.example.wish.dto;
+package com.example.wish.dto.wish;
 
+import com.example.wish.dto.AbstractWishDto;
 import com.example.wish.entity.WishStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.text.SimpleDateFormat;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class WishDto extends AbstractWishDto {
 
-    private static final SimpleDateFormat dateFormat
-            = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+//    private static final SimpleDateFormat dateFormat
+//            = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     private WishStatus wishStatus;
 

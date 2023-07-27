@@ -1,4 +1,4 @@
-package com.example.wish.dto;
+package com.example.wish.dto.profile;
 
 import com.example.wish.entity.CountryCode;
 import com.example.wish.entity.Socials;
@@ -16,8 +16,8 @@ import java.util.Date;
 @NoArgsConstructor
 public class UpdateProfileDetails {
 
-    private String firstname;
-    private String lastname;
+    private String firstName;
+    private String lastName;
     private String phone;
     private Date birthday;
     private CountryCode countryCode;

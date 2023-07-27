@@ -5,6 +5,7 @@ import com.example.wish.component.NotificationManagerService;
 import com.example.wish.component.ProfileDtoBuilder;
 import com.example.wish.component.WishMapper;
 import com.example.wish.dto.*;
+import com.example.wish.dto.wish.*;
 import com.example.wish.entity.*;
 import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
@@ -257,6 +258,13 @@ public class WishServiceImpl implements WishService {
                 List.of(WishStatus.NEW, WishStatus.IN_PROGRESS));
 
         return convertIfWishInProgress(ownWishes);
+    }
+
+    //возвращает собственное желание в любом статусе
+    // принадлежит ли это желание текущему профилю
+    @Override
+    public AbstractWishDto getOwmWish(long wishId) {
+        return null;
     }
 
 

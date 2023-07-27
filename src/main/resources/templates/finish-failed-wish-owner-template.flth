@@ -1,7 +1,7 @@
 <html>
 <head></head>
 <body>
-    <p>What a pity ${firstname?default("your angel")} could not fulfill the wish "${wish.title}"!</p>
+    <p>What a pity ${firstName?default("your angel")} could not fulfill the wish "${wish.title}"!</p>
     <p>Something must have gone wrong... Check your application</p>
 
 </body>

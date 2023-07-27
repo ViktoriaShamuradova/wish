@@ -1,4 +1,4 @@
-package com.example.wish.dto;
+package com.example.wish.dto.profile;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

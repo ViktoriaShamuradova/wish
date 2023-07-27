@@ -1,7 +1,7 @@
 <html>
 <head></head>
 <body>
-    <p>${firstname?default("Your angel")} asks for confirmation of the executing of your wish "${wish}"</p>
+    <p>${firstName?default("Your angel")} asks for confirmation of the executing of your wish "${wish}"</p>
 
 </body>
 </html>

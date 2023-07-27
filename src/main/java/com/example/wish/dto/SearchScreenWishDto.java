@@ -1,5 +1,6 @@
 package com.example.wish.dto;
 
+import com.example.wish.dto.wish.SearchWishDto;
 import com.example.wish.entity.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -44,7 +44,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send message forgot password" + profile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", profile.getFirstname());
+        content.put("firstName", profile.getFirstName());
         content.put("token", confirmationToken.getToken());
         content.put("expireAt", minutes);
 
@@ -79,8 +79,8 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to owner information about executing wish" + ownProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", ownProfile.getFirstname());
-        content.put("lastname", ownProfile.getLastname());
+        content.put("firstName", ownProfile.getFirstName());
+        content.put("lastName", ownProfile.getLastName());
 
         processNotification(ownProfile, "execute-wish-owner-template.flth", content);
     }
@@ -90,8 +90,8 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to executor profile information " + executingProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", executingProfile.getFirstname());
-        content.put("lastname", executingProfile.getLastname());
+        content.put("firstName", executingProfile.getFirstName());
+        content.put("lastName", executingProfile.getLastName());
 
         processNotification(executingProfile, "execute-wish-executor-template.flth", content);
     }
@@ -101,7 +101,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to executor profile information about karma" + executingProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", executingProfile.getFirstname());
+        content.put("firstName", executingProfile.getFirstName());
 
         processNotification(executingProfile, "confirm-wish-executor-success-template.flth", content);
 
@@ -112,7 +112,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to executor profile information about confirming" + ownProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", ownProfile.getFirstname());
+        content.put("firstName", ownProfile.getFirstName());
 
         processNotification(ownProfile, "confirm-wish-owner-success-template.flth", content);
 
@@ -123,7 +123,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to executor profile information about confirming failed" + executingProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", executingProfile.getFirstname());
+        content.put("firstName", executingProfile.getFirstName());
 
         processNotification(executingProfile, "confirm-wish-executor-failed-template.flth", content);
     }
@@ -133,7 +133,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to owner profile information about confirming failed" + ownProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", ownProfile.getFirstname());
+        content.put("firstName", ownProfile.getFirstName());
 
         processNotification(ownProfile, "confirm-wish-owner-failed-template.flth", content);
     }
@@ -144,7 +144,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to executor cancel execution's information about confirming" + executingProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", executingProfile.getFirstname());
+        content.put("firstName", executingProfile.getFirstName());
 
         processNotification(executingProfile, "cancel-execution-wish-executor-template.flth", content);
     }
@@ -153,7 +153,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
     public void sendCancelExecutionToOwner(Profile ownProfile) {
         LOGGER.debug("Send to owner profile cancel execution's information about confirming" + ownProfile.getEmail());
         Map<String, Object> content = new HashMap<>();
-        content.put("firstname", ownProfile.getFirstname());
+        content.put("firstName", ownProfile.getFirstName());
 
         processNotification(ownProfile, "cancel-execution-wish-owner-template.flth", content);
     }
@@ -164,9 +164,9 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
 
         Map<String, Object> content = new HashMap<>();
         if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS) {
-            content.put("firstname", null);
+            content.put("firstName", null);
         } else {
-            content.put("firstname", ownProfile.getFirstname());
+            content.put("firstName", ownProfile.getFirstName());
         }
 
         content.put("wish", executingWish.getWish().getTitle());
@@ -189,9 +189,9 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
 
         Map<String, Object> content = new HashMap<>();
         if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS) {
-            content.put("firstname", null);
+            content.put("firstName", null);
         } else {
-            content.put("firstname", executingWish.getExecutingProfile().getFirstname());
+            content.put("firstName", executingWish.getExecutingProfile().getFirstName());
         }
         content.put("wish", executingWish.getWish());
 
@@ -227,7 +227,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         if (StringUtils.isNotBlank(destinationAddress)) {
             NotificationMessage notificationMessage = notificationTemplateService.createNotificationMessage(templateName, model);
             notificationMessage.setDestinationAddress(destinationAddress);
-            notificationMessage.setDestinationName(profile.getFirstname());
+            notificationMessage.setDestinationName(profile.getFirstName());
             try {
                 Future<Boolean> booleanFuture = notificationSenderService.sendNotification(notificationMessage);
                 Boolean result = booleanFuture.get();

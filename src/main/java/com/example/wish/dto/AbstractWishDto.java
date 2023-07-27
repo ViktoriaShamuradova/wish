@@ -2,8 +2,10 @@ package com.example.wish.dto;
 
 import com.example.wish.constant.ExceptionMessage;
 import com.example.wish.constant.Regex;
+import com.example.wish.dto.wish.WishDto;
 import com.example.wish.entity.Priority;
 import com.example.wish.entity.Tag;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +35,7 @@ public class AbstractWishDto {
     private Priority priority;
     private Set<Tag> tags;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date created;
 
     private String photo;

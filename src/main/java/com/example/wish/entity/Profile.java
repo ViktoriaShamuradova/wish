@@ -36,10 +36,10 @@ public class Profile implements Serializable {
     private String uid;
 
     @Column(name = "first_name", length = 15)
-    private String firstname;
+    private String firstName;
 
     @Column(name = "last_name", length = 20)
-    private String lastname;
+    private String lastName;
 
     @Column(name = "password", length = 100)
     @JsonIgnore
@@ -182,8 +182,8 @@ public class Profile implements Serializable {
         return "Profile{" +
                 "id=" + id +
                 ", uid='" + uid + '\'' +
-                ", firstname='" + firstname + '\'' +
-                ", lastname='" + lastname + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
                 ", password='" + password + '\'' +
                 ", email='" + email + '\'' +
                 ", locked=" + locked +

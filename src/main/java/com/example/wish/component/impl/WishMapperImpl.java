@@ -3,8 +3,11 @@ package com.example.wish.component.impl;
 import com.example.wish.component.KarmaCounter;
 import com.example.wish.component.WishMapper;
 import com.example.wish.dto.*;
+import com.example.wish.dto.wish.ExecutingWishDto;
+import com.example.wish.dto.wish.FinishedWishDto;
+import com.example.wish.dto.wish.SearchWishDto;
+import com.example.wish.dto.wish.WishDto;
 import com.example.wish.entity.*;
-import com.example.wish.util.ImageUtil;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -46,8 +49,8 @@ public class WishMapperImpl implements WishMapper {
         WishDto wishDto = convertToDto(wish);
         SearchWishDto searchWishDto = new SearchWishDto(wishDto);
         searchWishDto.setProfileUid(wish.getOwnProfile().getUid());
-        searchWishDto.setProfileFirstname(wish.getOwnProfile().getFirstname());
-        searchWishDto.setProfileLastname(wish.getOwnProfile().getLastname());
+        searchWishDto.setProfileFirstname(wish.getOwnProfile().getFirstName());
+        searchWishDto.setProfileLastname(wish.getOwnProfile().getLastName());
 
         return searchWishDto;
     }
@@ -84,7 +87,7 @@ public class WishMapperImpl implements WishMapper {
         finishedWishDto.setEarnKarma(w.getEarnKarma());
         finishedWishDto.setPhoto(w.getWish().getPhoto());
         finishedWishDto.setOwnProfileUid(w.getWish().getOwnProfile().getUid());
-        finishedWishDto.setOwnProfileFullName(w.getWish().getOwnProfile().getLastname() + " " + w.getWish().getOwnProfile().getFirstname());
+        finishedWishDto.setOwnProfileFullName(w.getWish().getOwnProfile().getLastName() + " " + w.getWish().getOwnProfile().getFirstName());
 
         if (finishedWishDto.getStatus() == FinishWishStatus.FINISHED_FAILED_ANONYMOUS) {
             finishedWishDto.setExecutedProfileId(null);

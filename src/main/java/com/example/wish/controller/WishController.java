@@ -1,6 +1,10 @@
 package com.example.wish.controller;
 
 import com.example.wish.dto.*;
+import com.example.wish.dto.wish.ConfirmWishRequest;
+import com.example.wish.dto.wish.CreateWishRequest;
+import com.example.wish.dto.wish.SearchWishDto;
+import com.example.wish.dto.wish.StoryWishDto;
 import com.example.wish.model.search_request.WishSearchRequest;
 import com.example.wish.service.WishService;
 import lombok.RequiredArgsConstructor;
@@ -41,18 +45,29 @@ public class WishController {
     }
 
     /**
-     * отображаются желания, которые в статусе new или in-progress.
-     * finish wish, deleted - не отображаются. Чтобы их просмотреть, нужно идти по урлу истории
+     * Возвращает собственные желания текущего юзера в любос статусе
+     *
+     * @return
+     */
+    @GetMapping("/own/{id}")
+    public ResponseEntity<AbstractWishDto> getOwnWish(@PathVariable("id") long id) {
+        return ResponseEntity.ok(wishService.getOwmWish(id));
+
+       // return ResponseEntity.ok(wishService.getOwmWishesInProgress());
+    }
+
+    /**
+     * отображать желание других пользоватедей в статусе new
      * @param id
      * @return
      */
-    @GetMapping("/in-progress/{id}")
+    @GetMapping("/another/{id}")
     public ResponseEntity<AbstractWishDto> findWish(@PathVariable("id") long id) {
         return ResponseEntity.ok(wishService.find(id));
     }
 
     /**
-     * используется, когда происходит фильтрация
+     * используется, когда происходит фильтрация, отображаются желания для поиска только в статусе new
      *
      * @param request
      * @param pageable

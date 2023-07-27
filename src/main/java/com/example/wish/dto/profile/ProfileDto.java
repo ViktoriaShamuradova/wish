@@ -1,4 +1,4 @@
-package com.example.wish.dto;
+package com.example.wish.dto.profile;
 
 import com.example.wish.entity.*;
 import com.fasterxml.jackson.annotation.JsonFormat;

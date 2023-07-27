@@ -14,8 +14,8 @@ import java.util.List;
 public class Profile_ {
 
     public static volatile SingularAttribute<Profile, String> uid;
-    public static volatile SingularAttribute<Profile, String> firstname;
-    public static volatile SingularAttribute<Profile, String> lastname;
+    public static volatile SingularAttribute<Profile, String> firstName;
+    public static volatile SingularAttribute<Profile, String> lastName;
     public static volatile SingularAttribute<Profile, String> email;
     public static volatile SingularAttribute<Profile, Date> birthday;
     public static volatile SingularAttribute<Profile, Sex> sex;
@@ -34,8 +34,8 @@ public class Profile_ {
 
 
     public static final String UID = "uid";
-    public static final String FIRSTNAME = "firstname";
-    public static final String LASTNAME = "lastname";
+    public static final String FIRST_NAME = "firstName";
+    public static final String LAST_NAME = "lastName";
     public static final String EMAIL = "email";
     public static final String BIRTHDAY = "birthday";
     public static final String SEX = "sex";

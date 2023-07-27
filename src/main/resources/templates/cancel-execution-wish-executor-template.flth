@@ -1,7 +1,7 @@
 <html>
 <head></head>
 <body>
-    <p>Hello, ${firstname}!</p>
+    <p>Hello, ${firstName}!</p>
     <p>Вы отменили выполнение желания. Может стоит взять другое желание, ангел?</b></p>
 
 </body>

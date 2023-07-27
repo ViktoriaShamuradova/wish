@@ -1,6 +1,10 @@
 package com.example.wish.service;
 
 import com.example.wish.dto.*;
+import com.example.wish.dto.wish.ConfirmWishRequest;
+import com.example.wish.dto.wish.CreateWishRequest;
+import com.example.wish.dto.wish.SearchWishDto;
+import com.example.wish.dto.wish.StoryWishDto;
 import com.example.wish.model.search_request.WishSearchRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,4 +41,8 @@ public interface WishService {
     StoryWishDto getStoryWish();
 
     List<AbstractWishDto> getOwmWishesInProgress();
+
+   AbstractWishDto getOwmWish(long wishId);
+
+
 }
