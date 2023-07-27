@@ -42,6 +42,9 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
 
+
+
+
     //catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {
     //            log.error("Error logging in {}", e.getMessage());
     //            Map<String, String> errors = new HashMap<>();

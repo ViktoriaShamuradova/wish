@@ -8,8 +8,10 @@ import com.example.wish.entity.CountryCode;
 import com.example.wish.entity.Profile;
 import com.example.wish.entity.Socials;
 import com.example.wish.entity.meta_model.Profile_;
+import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
+import com.example.wish.exception.profile.ProfileUpdateException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.repository.ProfileRepository;
@@ -94,7 +96,11 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = profileRepository.findById(currentProfile.getId())
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
 
+        //сверить, что обновляем только те поля, которые можно
+       checkFieldsToUpdate(fields, profile);
+
         fields.forEach((key, value) -> {
+
             if (key.equals(Profile_.SOCIALS) && value instanceof Map) {
                 // Handle nested "socials" field
                 Map<String, Object> socialsFields = (Map<String, Object>) value;
@@ -123,8 +129,8 @@ public class ProfileServiceImpl implements ProfileService {
                         SimpleDateFormat dateFormat;
                         if (((String) value).matches("\\d{4}-\\d{2}-\\d{2}")) {
                             dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                        } else if (((String) value).matches("\\d{2}-\\d{2}-\\d{4}")) {
-                            dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+//                        } else if (((String) value).matches("\\d{2}-\\d{2}-\\d{4}")) {
+//                            dateFormat = new SimpleDateFormat("dd-MM-yyyy");
                         } else {
                             throw new IllegalArgumentException("Invalid date format for field: " + key);
                         }
@@ -135,15 +141,15 @@ public class ProfileServiceImpl implements ProfileService {
                     }
                 } else if (field.getType().isEnum()) {
                     // Check if the field is an enum of CountryCode
-                        if (CountryCode.class.isAssignableFrom(field.getType())) {
-                            // Convert String value to CountryCode enum
-                            CountryCode enumValue = CountryCode.fromCountryName(value.toString());
-                            ReflectionUtils.setField(field, profile, enumValue);
-                        } else {
-                            // For other enums, convert String value to the corresponding enum
-                            Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
-                            ReflectionUtils.setField(field, profile, enumValue);
-                        }
+                    if (CountryCode.class.isAssignableFrom(field.getType())) {
+                        // Convert String value to CountryCode enum
+                        CountryCode enumValue = CountryCode.fromCountryName(value.toString());
+                        ReflectionUtils.setField(field, profile, enumValue);
+                    } else {
+                        // For other enums, convert String value to the corresponding enum
+                        Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
+                        ReflectionUtils.setField(field, profile, enumValue);
+                    }
 
                 } else {
                     ReflectionUtils.setField(field, profile, value);
@@ -151,23 +157,38 @@ public class ProfileServiceImpl implements ProfileService {
             }
         });
 
-        //else if (field.getType().isEnum()) {
-        //    // Check if the field is an enum of CountryCode
-        //    if (CountryCode.class.isAssignableFrom(field.getType())) {
-        //        // Convert String value to CountryCode enum
-        //        CountryCode enumValue = CountryCode.valueOf(value.toString());
-        //        ReflectionUtils.setField(field, profile, enumValue);
-        //    } else {
-        //        // For other enums, convert String value to the corresponding enum
-        //        Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
-        //        ReflectionUtils.setField(field, profile, enumValue);
-        //    }
-        //} else {
-        //    ReflectionUtils.setField(field, profile, value);
-        //}
-
         Profile saved = profileRepository.save(profile);
         return profileDtoBuilder.buildProfileDto(saved);
+    }
+
+    private void checkFieldsToUpdate(Map<String, Object> fields, Profile profile) {
+        UpdateProfileDetails updateProfileDetails = new UpdateProfileDetails();
+        Class<?> updateProfileDetailsClass = updateProfileDetails.getClass();
+
+        for (String key : fields.keySet()) {
+
+            try {
+                // Check if the field exists in the UpdateProfileDetails class
+                Field updateDetailsField = updateProfileDetailsClass.getDeclaredField(key); //здесь выбрасывается исключение
+                updateDetailsField.setAccessible(true);
+                Object fieldValue = updateDetailsField.get(updateProfileDetails);
+
+                // Only update the field if it exists in the UpdateProfileDetails class
+                if (fieldValue != null) {
+                    // Check if the field exists in the ProfileDto class
+                    Field profileField = profile.getClass().getDeclaredField(key);
+                    profileField.setAccessible(true);
+
+                    // Check if the field in the ProfileDto class has the same type as the UpdateProfileDetails field
+                    if (!profileField.getType().equals(updateDetailsField.getType())) {
+                        System.err.println("Field type mismatch: " + key);
+                        // throw exception can't update
+                    }
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new ProfileUpdateException(e.getMessage());
+            }
+        }
     }
 
 

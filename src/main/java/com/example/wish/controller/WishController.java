@@ -30,11 +30,12 @@ public class WishController {
     private final WishService wishService;
 
     /**
-     * Возвращает собственные желания текущего юзера для главного экрана в статусе new, in_progress
+     * Возвращает собственные желания текущего юзера для главного экрана в статусе new,
+     * in_progress
      *
      * @return
      */
-    @GetMapping("/in-progress")
+    @GetMapping("/own")
     public ResponseEntity<List<AbstractWishDto>> getOwnWishesInProgress() {
         return ResponseEntity.ok(wishService.getOwmWishesInProgress());
     }

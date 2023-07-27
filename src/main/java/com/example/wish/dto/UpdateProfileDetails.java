@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
+//класс для обновления. Только эти поля можно изменять в profile.class
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
