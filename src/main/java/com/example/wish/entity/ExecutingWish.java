@@ -37,6 +37,7 @@ public class ExecutingWish {
     @ToString.Exclude
     private Profile executingProfile;
 
+    //должно ли быть уникально
     @ManyToOne
     @ToString.Exclude
     @JoinColumn(name = "wish_id", nullable = false)

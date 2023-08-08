@@ -310,6 +310,25 @@ public class WishServiceImpl implements WishService {
     // принадлежит ли это желание текущему профилю
     @Override
     public AbstractWishDto getOwmWish(long wishId) {
+
+        Wish wish = wishRepository.findById(wishId).orElseThrow(() -> new WishNotFoundException(wishId));
+
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+        if (wish.getOwnProfile().getId() != currentProfile.getId()) {
+            throw new WishException("show only own wishes");
+        }
+
+        if (wish.getStatus() == WishStatus.NEW) {
+            return wishMapper.convertToDto(wish);
+        } else if (wish.getStatus() == WishStatus.IN_PROGRESS) {
+            return wishMapper.convertToDto(executingWishRepository.findByWishId(wishId).get());
+        } else if (wish.getStatus() == WishStatus.FINISHED) { //если желание завершено - то искать желания, которые успешно завершены анонимно или нет
+            return wishMapper.convertToDto(finishedWishRepository.findByWishIdAndStatusIn(wishId, List.of(FinishWishStatus.FINISHED_SUCCESS, FinishWishStatus.FINISHED_SUCCESS_ANONYMOUS)).get());
+        } else if(wish.getStatus()==WishStatus.DELETED ) {
+            //удаленные желания не должны быть доступны никаким profile
+            throw new WishException("the wish has been deleted and is not available");
+        }
+
         return null;
     }
 
@@ -381,8 +400,6 @@ public class WishServiceImpl implements WishService {
     }
 
     /**
-     * отображают желание не из истории
-     *
      * @param id
      * @return
      */
