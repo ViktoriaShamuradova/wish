@@ -1,6 +1,5 @@
 package com.example.wish.validator;
 
-import com.example.wish.annotation.FieldMatch;
 import com.example.wish.annotation.ValidEmail;
 
 import javax.validation.ConstraintValidator;

@@ -96,45 +96,20 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseThrow(() -> new ProfileNotFoundException(currentProfile.getId()));
 
         //сверить, что обновляем только те поля, которые можно
-       checkFieldsToUpdate(fields, profile);
+        checkFieldsToUpdate(fields, profile);
 
         fields.forEach((key, value) -> {
 
             if (key.equals(Profile_.SOCIALS) && value instanceof Map) {
-                // Handle nested "socials" field
-                Map<String, Object> socialsFields = (Map<String, Object>) value;
-                Socials socials = profile.getSocials();
-                if (socials == null) {
-                    socials = new Socials();
-                }
-                Socials finalSocials = socials;
-                socialsFields.forEach((socialsKey, socialsValue) -> {
-                    Field socialsField = ReflectionUtils.findField(Socials.class, socialsKey);
-                    if (socialsField != null) {
-                        socialsField.setAccessible(true);
-                        ReflectionUtils.setField(socialsField, finalSocials, socialsValue);
-                    }
-                });
-                profile.setSocials(socials);
+                profile.setSocials(identifyProfileSocials(profile.getSocials(), value));
             } else {
                 // Handle other fields
                 Field field = ReflectionUtils.findField(Profile.class, key);
                 assert field != null;
                 field.setAccessible(true);
                 if (field.getType() == Date.class && value instanceof String) {
-                    // Convert String value to Date
                     try {
-                        Date dateValue;
-                        SimpleDateFormat dateFormat;
-                        if (((String) value).matches("\\d{4}-\\d{2}-\\d{2}")) {
-                            dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-//                        } else if (((String) value).matches("\\d{2}-\\d{2}-\\d{4}")) {
-//                            dateFormat = new SimpleDateFormat("dd-MM-yyyy");
-                        } else {
-                            throw new IllegalArgumentException("Invalid date format for field: " + key);
-                        }
-                        dateValue = dateFormat.parse((String) value);
-                        ReflectionUtils.setField(field, profile, dateValue);
+                        setProfileDate(field, profile, key, value);
                     } catch (ParseException e) {
                         throw new IllegalArgumentException("Invalid date format for field: " + key);
                     }
@@ -142,14 +117,11 @@ public class ProfileServiceImpl implements ProfileService {
                     // Check if the field is an enum of CountryCode
                     if (CountryCode.class.isAssignableFrom(field.getType())) {
                         // Convert String value to CountryCode enum
-                        CountryCode enumValue = CountryCode.fromCountryName(value.toString());
-                        ReflectionUtils.setField(field, profile, enumValue);
+                        setProfileCountryCode(field, profile, CountryCode.fromCountryName(value.toString()));
                     } else {
                         // For other enums, convert String value to the corresponding enum
-                        Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString());
-                        ReflectionUtils.setField(field, profile, enumValue);
+                        setProfileEnum(field, profile, Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString()));
                     }
-
                 } else {
                     ReflectionUtils.setField(field, profile, value);
                 }
@@ -158,6 +130,48 @@ public class ProfileServiceImpl implements ProfileService {
 
         Profile saved = profileRepository.save(profile);
         return profileDtoBuilder.buildProfileDto(saved);
+    }
+
+    private void setProfileEnum(Field field, Profile profile, Enum<?> enumValue) {
+        ReflectionUtils.setField(field, profile, enumValue);
+    }
+
+    private void setProfileCountryCode(Field field, Profile profile, CountryCode value) {
+        CountryCode enumValue = CountryCode.fromCountryName(value.toString());
+        ReflectionUtils.setField(field, profile, enumValue);
+    }
+
+    private void setProfileDate(Field field, Profile profile, String key, Object value) throws ParseException {
+        // Convert String value to Date
+        Date dateValue;
+        SimpleDateFormat dateFormat;
+        if (((String) value).matches("\\d{4}-\\d{2}-\\d{2}")) {
+            dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+//                        } else if (((String) value).matches("\\d{2}-\\d{2}-\\d{4}")) {
+//                            dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+        } else {
+            throw new IllegalArgumentException("Invalid date format for field: " + key);
+        }
+        dateValue = dateFormat.parse((String) value);
+        ReflectionUtils.setField(field, profile, dateValue);
+    }
+
+
+    private Socials identifyProfileSocials(Socials socials, Object value) {
+        // Handle nested "socials" field
+        Map<String, Object> socialsFields = (Map<String, Object>) value;
+        if (socials == null) {
+            socials = new Socials();
+        }
+        Socials finalSocials = socials;
+        socialsFields.forEach((socialsKey, socialsValue) -> {
+            Field socialsField = ReflectionUtils.findField(Socials.class, socialsKey);
+            if (socialsField != null) {
+                socialsField.setAccessible(true);
+                ReflectionUtils.setField(socialsField, finalSocials, socialsValue);
+            }
+        });
+        return socials;
     }
 
     private void checkFieldsToUpdate(Map<String, Object> fields, Profile profile) {
@@ -180,8 +194,7 @@ public class ProfileServiceImpl implements ProfileService {
 
                     // Check if the field in the ProfileDto class has the same type as the UpdateProfileDetails field
                     if (!profileField.getType().equals(updateDetailsField.getType())) {
-                        System.err.println("Field type mismatch: " + key);
-                        // throw exception can't update
+                        throw new ProfileUpdateException("Field type mismatch: " + key);
                     }
                 }
             } catch (NoSuchFieldException | IllegalAccessException e) {

@@ -1,7 +1,9 @@
 package com.example.wish.service.impl;
 
+import com.example.wish.component.NotificationManagerService;
 import com.example.wish.dto.AuthRequest;
 import com.example.wish.dto.AuthResponse;
+import com.example.wish.dto.EmailVerificationRequest;
 import com.example.wish.dto.RegistrationRequest;
 import com.example.wish.entity.*;
 import com.example.wish.exception.profile.ProfileException;
@@ -45,8 +47,15 @@ class AuthenticationServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private NotificationManagerService notificationManagerService;
+
     @InjectMocks
     private AuthenticationService authenticationService;
+
+    private static final int EXPIRE_MINUTES_FOR_REGISTRATION = 60;
+    private static final int EXPIRE_MINUTES_FOR_PASSWORD = 10;
+
 
 
     @Test
@@ -150,6 +159,67 @@ class AuthenticationServiceTest {
         // Act & Assert
         assertThrows(ProfileException.class, () -> authenticationService.authenticate(authRequest));
     }
+
+    @Test
+    public void testVerifyEmailWithEmailExistsAndIsRegistrationTrueThrowException() {
+        EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", true);
+
+        when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(new Profile()));
+
+        // Test the exception
+        assertThrows(ProfileExistException.class, () -> authenticationService.verifyEmail(request));
+
+        // Verify that notificationManagerService methods were not called
+        verify(notificationManagerService, never()).sendOnePasswordForEmailVerification(anyString(), anyString(), anyInt());
+        verify(notificationManagerService, never()).sendOnePasswordForResetPassword(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    public void testVerifyEmailWithEmailNotExistAndIsRegistrationTrue_WillSendNotification() {
+        EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", true);
+
+        when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
+
+        authenticationService.verifyEmail(request);
+
+        verify(notificationManagerService).sendOnePasswordForEmailVerification(
+                request.getEmail(),
+                request.getOtp(),
+                EXPIRE_MINUTES_FOR_REGISTRATION
+        );
+        verify(notificationManagerService, never()).sendOnePasswordForResetPassword(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    public void testVerifyEmailWithEmailNotExistAndIsRegistrationFalse_WillSendNotification() {
+        EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", false);
+
+        when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(new Profile()));
+
+        authenticationService.verifyEmail(request);
+
+        verify(notificationManagerService).sendOnePasswordForResetPassword(
+                request.getEmail(),
+                request.getOtp(),
+                EXPIRE_MINUTES_FOR_PASSWORD
+        );
+        verify(notificationManagerService, never()).sendOnePasswordForEmailVerification(anyString(), anyString(), anyInt());
+    }
+    @Test
+    public void testVerifyEmailWithEmailIsEmptyAndIsRegistrationFalse_TrowException() {
+        EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", false);
+
+        when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.ofNullable(null));
+
+        // Test the exception
+        assertThrows(ProfileExistException.class, () -> authenticationService.verifyEmail(request));
+
+        // Verify that notificationManagerService methods were not called
+        verify(notificationManagerService, never()).sendOnePasswordForEmailVerification(anyString(), anyString(), anyInt());
+        verify(notificationManagerService, never()).sendOnePasswordForResetPassword(anyString(), anyString(), anyInt());
+    }
+
+
 
     private Profile createProfile(AuthRequest authRequest) {
         return Profile.builder()

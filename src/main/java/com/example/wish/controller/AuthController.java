@@ -63,7 +63,8 @@ public class AuthController {
      * @return
      */
     @PostMapping("/email-verification")
-    public ResponseEntity emailVerification(@RequestBody @Valid EmailVerificationRequest emailVerificationRequest) {
+    public ResponseEntity emailVerification(
+            @RequestBody @Valid EmailVerificationRequest emailVerificationRequest) {
         authenticationService.verifyEmail(emailVerificationRequest);
         return new ResponseEntity<>(HttpStatus.OK);
     }
@@ -75,6 +76,7 @@ public class AuthController {
         return new ResponseEntity<>(isDeleted, HttpStatus.I_AM_A_TEAPOT);
 
     }
+
     //возвращать тот же токен idTokenString
     //пользователь может войти с помощбю гугла, если он уже зареган(проверяется по почте), то возвращается тот же юзер
     //если нет в базе, то создается новый.
