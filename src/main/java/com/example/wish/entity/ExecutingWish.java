@@ -32,15 +32,21 @@ public class ExecutingWish {
     @Column()
     private Date finish;
 
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int attempt;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean anonymously;
+
+
     @JoinColumn(name = "executing_profile_id", nullable = false)
     @ManyToOne
     @ToString.Exclude
     private Profile executingProfile;
 
-    //должно ли быть уникально
     @ManyToOne
     @ToString.Exclude
-    @JoinColumn(name = "wish_id", nullable = false)
+    @JoinColumn(name = "wish_id", nullable = false, unique = true)
     private Wish wish;
 
     public ExecutingWish(Wish wish) {

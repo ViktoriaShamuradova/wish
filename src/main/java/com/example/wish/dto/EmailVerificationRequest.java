@@ -21,8 +21,7 @@ public class EmailVerificationRequest {
     private String otp;
 
     @NotNull
-   @JsonProperty("isRegistration")
+    @JsonProperty("isRegistration")
     private boolean isRegistration;
-
 
 }

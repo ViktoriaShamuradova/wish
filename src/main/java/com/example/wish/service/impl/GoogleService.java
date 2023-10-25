@@ -47,7 +47,6 @@ public class GoogleService implements SocialService<GoogleIdToken> {
             profile.setEmail(email);
             profile.setFirstName(givenName);
             profile.setLastName(familyName);
-            profile.setPhoto(pictureUrl);
             profile.setRole(Role.USER);
             profile.setStatus(ProfileStatus.RED);
             profile.setStatusLevel(ProfileStatusLevel.PERSON);

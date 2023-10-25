@@ -1,6 +1,7 @@
 package com.example.wish.component.impl;
 
 
+
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

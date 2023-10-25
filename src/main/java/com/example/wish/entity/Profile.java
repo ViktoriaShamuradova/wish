@@ -3,6 +3,7 @@ package com.example.wish.entity;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+
 import lombok.*;
 import org.hibernate.Hibernate;
 
@@ -16,6 +17,9 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.*;
+
+//пересмотреь поле active. пользователь одинаково входит в систему при active true and false
+//данное поле нигде пока не используется
 
 @Getter
 @Setter
@@ -95,8 +99,9 @@ public class Profile implements Serializable {
     @Column()
     private Timestamp created;
 
-    @Column(name = "photo")
-    private String photo;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "image_id")
+    private ProfileImage image;
 
     @Embedded
     private Socials socials;
@@ -107,14 +112,17 @@ public class Profile implements Serializable {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @OneToMany(mappedBy = "profile")
+    private List<Token> tokens;
+
     @OneToMany(mappedBy = "ownProfile",
-            fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REMOVE})
+            fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Wish> ownWishes;
 
-    @ManyToMany(mappedBy = "profiles")
+    @ManyToMany(mappedBy = "profiles", cascade = CascadeType.REMOVE)
     private List<EnergyPractice> energyPractices;
 
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.REMOVE)
     @JoinTable(
             name = "profile_favorite",
             joinColumns = @JoinColumn(name = "profile_id"),
@@ -197,7 +205,6 @@ public class Profile implements Serializable {
                 ", status=" + status +
                 ", statusLevel=" + statusLevel +
                 ", created=" + created +
-                ", photo='" + photo + '\'' +
                 ", socials=" + socials +
                 ", active=" + active +
                 ", role=" + role +

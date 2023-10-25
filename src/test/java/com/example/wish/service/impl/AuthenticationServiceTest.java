@@ -10,6 +10,7 @@ import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.repository.ProfileRepository;
+import com.example.wish.repository.TokenRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,10 +19,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -34,6 +38,8 @@ class AuthenticationServiceTest {
 
     @Mock
     private ProfileRepository profileRepository;
+    @Mock
+    private TokenRepository tokenRepository;
 
     @Mock
     private EmailValidator emailValidator;
@@ -57,7 +63,6 @@ class AuthenticationServiceTest {
     private static final int EXPIRE_MINUTES_FOR_PASSWORD = 10;
 
 
-
     @Test
     void register_ValidRequest_SuccessfulRegistration() {
 
@@ -67,7 +72,6 @@ class AuthenticationServiceTest {
         when(profileRepository.save(any())).thenReturn(mockProfile);
         when(passwordEncoder.encode(any())).thenReturn("dvbdjvbdjvbdjvbjdvb");
         when(jwtService.generateAccessToken(any())).thenReturn("access_token");
-        when(jwtService.generateRefreshToken(any())).thenReturn("refresh_token");
 
 
         AuthResponse result = authenticationService.register(registrationRequest);
@@ -94,35 +98,63 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testAuthenticate_ValidCredentials_ReturnsAuthResponse() {
+    public void authenticate_ValidCredentials_ReturnsAuthResponse() {
         // Arrange
         String email = "test@example.com";
         String password = "password";
         AuthRequest authRequest = new AuthRequest(email, password);
         Profile profile = createProfile(authRequest);
+        List<Token> tokens = new ArrayList<>();
+        String jwt = "access_token";
         when(profileRepository.findByEmail(email)).thenReturn(Optional.of(profile));
-        when(jwtService.generateAccessToken(any())).thenReturn("access_token");
-        when(jwtService.generateRefreshToken(any())).thenReturn("refresh_token");
-
+        when(jwtService.generateAccessToken(any())).thenReturn(jwt);
+        when(tokenRepository.findAllValidTokensByProfile(profile.getId())).thenReturn(tokens);
+        when(tokenRepository.save(any())).thenReturn(any());
         // Act
         AuthResponse result = authenticationService.authenticate(authRequest);
 
         // Assert
         assertNotNull(result);
-        assertEquals("access_token", result.getAccessToken());
-        assertEquals("refresh_token", result.getRefreshToken());
+        assertEquals("access_token", result.getToken());
         verify(authenticationManager).authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );
 
-        ArgumentCaptor<CurrentProfile> captor = ArgumentCaptor.forClass(CurrentProfile.class); //нужен для объектов которые создаются внутри проверяемого метода
+        ArgumentCaptor<CurrentProfile> captor = ArgumentCaptor
+                .forClass(CurrentProfile.class); //нужен для объектов которые создаются внутри проверяемого метода
+        ArgumentCaptor<Token> tokenArgumentCaptor = ArgumentCaptor
+                .forClass(Token.class);
         verify(jwtService).generateAccessToken(captor.capture());
+        verify(tokenRepository).save(tokenArgumentCaptor.capture());
+
         CurrentProfile value = captor.getValue();
         assertThat(value.getEmail()).isEqualTo(profile.getEmail());
+
+        Token tokenValue = tokenArgumentCaptor.getValue();
+        assertThat(tokenValue.getToken()).isEqualTo(jwt);
     }
 
     @Test
-    public void testAuthenticate_InvalidEmailOrPassword_ThrowsProfileException() {
+    public void authenticate_profileLocked() {
+        String email = "test@example.com";
+        String password = "password";
+        AuthRequest authRequest = new AuthRequest(email, password);
+        Profile profile = createProfile(authRequest);
+        profile.setEnabled(true);
+        profile.setLocked(true);
+
+        when(profileRepository.findByEmail(email)).thenReturn(Optional.of(profile));
+
+        doThrow(LockedException.class).when(authenticationManager).authenticate(
+                new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword())
+        );
+
+        assertThrows(ProfileException.class, () -> authenticationService.authenticate(authRequest));
+    }
+
+
+    @Test
+    public void authenticate_InvalidEmailOrPassword_ThrowsProfileException() {
         // Arrange
         AuthRequest authRequest = new AuthRequest("test@example.com", "incorrect_password");
         Profile profile = createProfile(authRequest);
@@ -137,7 +169,7 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testAuthenticate_ProfileNotFound_ThrowsProfileException() {
+    public void authenticate_ProfileNotFound_ThrowsProfileException() {
         // Arrange
         String email = "test@example.com";
         String password = "password";
@@ -149,7 +181,7 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testAuthenticate_ProfileProviderGoogle_ThrowsProfileException() {
+    public void authenticate_ProfileProviderGoogle_ThrowsProfileException() {
         // Arrange
         AuthRequest authRequest = new AuthRequest("test@example.com", "password");
         Profile mockProfile = createProfile(authRequest);
@@ -161,7 +193,7 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testVerifyEmailWithEmailExistsAndIsRegistrationTrueThrowException() {
+    public void verifyEmailWithEmailExistsAndIsRegistrationTrueThrowException() {
         EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", true);
 
         when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(new Profile()));
@@ -175,7 +207,7 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testVerifyEmailWithEmailNotExistAndIsRegistrationTrue_WillSendNotification() {
+    public void verifyEmailWithEmailNotExistAndIsRegistrationTrue_WillSendNotification() {
         EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", true);
 
         when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
@@ -191,7 +223,7 @@ class AuthenticationServiceTest {
     }
 
     @Test
-    public void testVerifyEmailWithEmailNotExistAndIsRegistrationFalse_WillSendNotification() {
+    public void verifyEmailWithEmailNotExistAndIsRegistrationFalse_WillSendNotification() {
         EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", false);
 
         when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(new Profile()));
@@ -205,8 +237,9 @@ class AuthenticationServiceTest {
         );
         verify(notificationManagerService, never()).sendOnePasswordForEmailVerification(anyString(), anyString(), anyInt());
     }
+
     @Test
-    public void testVerifyEmailWithEmailIsEmptyAndIsRegistrationFalse_TrowException() {
+    public void verifyEmailWithEmailIsEmptyAndIsRegistrationFalse_TrowException() {
         EmailVerificationRequest request = new EmailVerificationRequest("test@example.com", "123456", false);
 
         when(profileRepository.findByEmail(request.getEmail())).thenReturn(Optional.ofNullable(null));
@@ -218,7 +251,6 @@ class AuthenticationServiceTest {
         verify(notificationManagerService, never()).sendOnePasswordForEmailVerification(anyString(), anyString(), anyInt());
         verify(notificationManagerService, never()).sendOnePasswordForResetPassword(anyString(), anyString(), anyInt());
     }
-
 
 
     private Profile createProfile(AuthRequest authRequest) {

@@ -6,11 +6,11 @@ import com.example.wish.entity.Profile;
 
 public interface KarmaCounter {
 
-    Profile count(ExecutingWish executingWish);
+    void count(ExecutingWish executingWish);
 
     int transformIntoKarma(Priority priority);
 
     double calculateAdditionalSumToKarma(ExecutingWish executingWish);
 
-    Profile changeStatus(Profile executedProfile);
+    void changeStatus(Profile executedProfile);
 }

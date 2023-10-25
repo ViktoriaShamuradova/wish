@@ -28,14 +28,13 @@ public class WishFinishChecker {
     @Scheduled(fixedRateString = "PT3M")
     public void changeStatus() {
 
+
         List<ExecutingWish> byFinishBefore = executingWishRepository.findByFinishBefore(Timestamp.from(Instant.now()));
 
         for (ExecutingWish executingWish : byFinishBefore) {
-            if (executingWish.getExecutingStatus() == ExecuteStatus.IN_PROGRESS_ANONYMOUS
-                    || executingWish.getExecutingStatus() == ExecuteStatus.IN_PROGRESS) {
+            if (executingWish.getExecutingStatus() == ExecuteStatus.IN_PROGRESS) {
                 handleNotExecutedWish(executingWish);
-            } else if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION
-                    || executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS) {
+            } else if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION) {
                 handleNotExecutedWish(executingWish);
             }
         }

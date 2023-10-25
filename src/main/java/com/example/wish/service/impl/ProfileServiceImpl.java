@@ -4,26 +4,31 @@ import com.example.wish.component.ProfileDtoBuilder;
 import com.example.wish.dto.profile.ProfileDto;
 import com.example.wish.dto.profile.ProfilesDetails;
 import com.example.wish.dto.profile.UpdateProfileDetails;
-import com.example.wish.entity.CountryCode;
-import com.example.wish.entity.Profile;
-import com.example.wish.entity.Socials;
+import com.example.wish.entity.*;
 import com.example.wish.entity.meta_model.Profile_;
+import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileUpdateException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import com.example.wish.repository.ProfileRepository;
+import com.example.wish.service.ProfileImageService;
 import com.example.wish.service.ProfileService;
+import com.example.wish.service.WishService;
 import com.example.wish.util.DateUtil;
+import com.example.wish.util.ImageUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -45,7 +50,14 @@ public class ProfileServiceImpl implements ProfileService {
     private final ProfileDtoBuilder profileDtoBuilder;
     private final AuthenticationService authenticationService;
 
+    private final WishService wishService;
+
+
     private final ProfileRepository profileRepository;
+    private final ProfileImageService profileImageService;
+
+    @Value("${spring.servlet.multipart.max-file-size}")
+    private String maxSize;
 
 
     /**
@@ -80,7 +92,6 @@ public class ProfileServiceImpl implements ProfileService {
         profile.setSex(updateProfileRequest.getSex());
         profile.setSocials(updateProfileRequest.getSocials());
         profile.setBirthday(updateProfileRequest.getBirthday());
-        profile.setPhoto(updateProfileRequest.getPhoto());
 
         Profile saved = profileRepository.save(profile);
 
@@ -99,37 +110,100 @@ public class ProfileServiceImpl implements ProfileService {
         checkFieldsToUpdate(fields, profile);
 
         fields.forEach((key, value) -> {
+            Field field = ReflectionUtils.findField(Profile.class, key);
+            assert field != null;
+            field.setAccessible(true);
 
             if (key.equals(Profile_.SOCIALS) && value instanceof Map) {
                 profile.setSocials(identifyProfileSocials(profile.getSocials(), value));
-            } else {
-                // Handle other fields
-                Field field = ReflectionUtils.findField(Profile.class, key);
-                assert field != null;
-                field.setAccessible(true);
-                if (field.getType() == Date.class && value instanceof String) {
-                    try {
-                        setProfileDate(field, profile, key, value);
-                    } catch (ParseException e) {
-                        throw new IllegalArgumentException("Invalid date format for field: " + key);
-                    }
-                } else if (field.getType().isEnum()) {
-                    // Check if the field is an enum of CountryCode
-                    if (CountryCode.class.isAssignableFrom(field.getType())) {
-                        // Convert String value to CountryCode enum
-                        setProfileCountryCode(field, profile, CountryCode.fromCountryName(value.toString()));
-                    } else {
-                        // For other enums, convert String value to the corresponding enum
-                        setProfileEnum(field, profile, Enum.valueOf((Class<? extends Enum>) field.getType(), value.toString()));
-                    }
-                } else {
-                    ReflectionUtils.setField(field, profile, value);
+            } else if (field.getType() == Date.class && value instanceof String) {
+                try {
+                    setProfileDate(field, profile, key, value);
+                } catch (ParseException e) {
+                    throw new IllegalArgumentException("Invalid date format for field: " + key);
                 }
+            } else if (field.getType().isEnum()) {
+                setEnumField(field, profile, value.toString());
+            } else {
+                ReflectionUtils.setField(field, profile, value);
             }
         });
+        return profileDtoBuilder.buildProfileDto(profileRepository.save(profile));
+    }
 
-        Profile saved = profileRepository.save(profile);
-        return profileDtoBuilder.buildProfileDto(saved);
+    private void setEnumField(Field field, Profile profile, String value) {
+        try {
+            if (field.getType().isEnum()) {
+                Enum<?> enumValue;
+
+                if (field.getType().equals(CountryCode.class)) {
+                    enumValue = CountryCode.fromCountryName(value);
+                } else if (field.getType().equals(Sex.class)) {
+                    enumValue = Sex.fromString(value);
+                } else {
+                    // For other enums, convert String value to the corresponding enum
+                    enumValue = Enum.valueOf((Class<? extends Enum>) field.getType(), value);
+                }
+                ReflectionUtils.setField(field, profile, enumValue);
+            } else {
+                throw new IllegalArgumentException("Field is not of enum type: " + field.getName());
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid enum value for field: " + field.getName());
+        }
+    }
+
+    /**
+     * можно удалить аккаунт, если он исполняет желания
+     * нельзя удалить аккаунт, если его желания исполняют
+     * <p>
+     * удалить желания из таблицы executing wishes, поменять статус желания на new
+     */
+    @Transactional
+    @Override
+    public void delete() {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        Optional<Profile> byId = profileRepository.findById(currentProfile.getId());
+
+        if (!wishService.getOwnWish(WishStatus.IN_PROGRESS).isEmpty())
+            throw new ProfileException("can't delete profile. Profile have wishes in_progress");
+
+        wishService.deleteExecutingWishes(byId.get());
+        profileRepository.delete(byId.get());
+
+    }
+
+    /**
+     * @param file
+     * @return image id
+     * @throws HttpMediaTypeNotSupportedException
+     * @throws IOException
+     */
+    @Transactional
+    @Override
+    public String uploadImage(MultipartFile file) throws HttpMediaTypeNotSupportedException, IOException {
+        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
+
+        ImageUtil.checkImage(file, maxSize);
+        Optional<Profile> optionalProfile = profileRepository.findById(currentProfile.getId());
+
+        if (optionalProfile.get().getImage() != null) {
+            profileImageService.delete(optionalProfile.get().getImage());
+        }
+
+        optionalProfile.get().setImage(profileImageService.save(file));
+        return optionalProfile.get().getUid();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public byte[] findImage(String uid) {
+        Profile profile = profileRepository.findByUid(uid)
+                .orElseThrow(() -> new ProfileNotFoundException(uid));
+
+        if (profile.getImage() == null) return null;
+        return profile.getImage().getImageData();
     }
 
     private void setProfileEnum(Field field, Profile profile, Enum<?> enumValue) {
@@ -184,19 +258,8 @@ public class ProfileServiceImpl implements ProfileService {
                 // Check if the field exists in the UpdateProfileDetails class
                 Field updateDetailsField = updateProfileDetailsClass.getDeclaredField(key); //здесь выбрасывается исключение
                 updateDetailsField.setAccessible(true);
-                Object fieldValue = updateDetailsField.get(updateProfileDetails);
+                updateDetailsField.get(updateProfileDetails); //Object fieldValue =
 
-                // Only update the field if it exists in the UpdateProfileDetails class
-                if (fieldValue != null) {
-                    // Check if the field exists in the ProfileDto class
-                    Field profileField = profile.getClass().getDeclaredField(key);
-                    profileField.setAccessible(true);
-
-                    // Check if the field in the ProfileDto class has the same type as the UpdateProfileDetails field
-                    if (!profileField.getType().equals(updateDetailsField.getType())) {
-                        throw new ProfileUpdateException("Field type mismatch: " + key);
-                    }
-                }
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 throw new ProfileUpdateException(e.getMessage());
             }
@@ -251,6 +314,12 @@ public class ProfileServiceImpl implements ProfileService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * for testing
+     *
+     * @param email
+     * @return
+     */
     @Transactional
     @Override
     public boolean removeProfile(String email) {
@@ -261,7 +330,6 @@ public class ProfileServiceImpl implements ProfileService {
         } else {
             return false;
         }
-
     }
 
 
@@ -269,16 +337,9 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     @Override
     public ProfilesDetails findByUid(String uid) {
-        log.info("find profile {} ", uid);
-
-        CurrentProfile currentProfile = authenticationService.getCurrentProfile();
         Profile profile = profileRepository.findByUid(uid).orElseThrow(() -> new ProfileNotFoundException(uid));
 
-        if (currentProfile.getId() == profile.getId()) {
-            return profileDtoBuilder.buildProfileDetails(profile);
-        } else {
-            return profileDtoBuilder.buildProfileDetails(profile);
-        }
+        return profileDtoBuilder.buildProfileDetails(profile);
     }
 
     /**

@@ -1,7 +1,7 @@
 <html>
 <head></head>
 <body>
-    <p>Hello, ${firstName} ${lastname}!</p>
+    <p>Hello, ${firstName} ${lastName}!</p>
     <p>Check out the app quickly! Someone wanted to execute your wish!</b></p>
 </body>
 </html>

@@ -1,7 +1,7 @@
 package com.example.wish.dto;
 
 import com.example.wish.dto.wish.SearchWishDto;
-import com.example.wish.entity.Tag;
+import com.example.wish.entity.TagName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,5 +21,5 @@ import java.util.Set;
 public class SearchScreenWishDto {
     List<SearchWishDto> wishes; //searchWishDto
     int countAllOfWishes;
-    Set<Tag> tags;
+    Set<TagName> tags;
 }

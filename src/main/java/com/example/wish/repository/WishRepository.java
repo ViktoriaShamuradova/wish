@@ -4,6 +4,7 @@ import com.example.wish.entity.*;
 import com.example.wish.entity.meta_model.Profile_;
 import com.example.wish.entity.meta_model.Wish_;
 import com.example.wish.model.search_request.WishSearchRequest;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,7 +35,7 @@ public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificat
 
     int countByStatus(WishStatus wishStatus);
 
-    Page<Wish> findAllByTagsIn(Set<Tag> tags, Pageable pageable);
+    Page<Wish> findAllByTagsIn(Set<TagName> tags, Pageable pageable);
 
     List<Wish> findByOwnProfileIdAndStatus(Long profileId, WishStatus status);
     List<Wish> findByOwnProfileIdAndStatusIn(Long profileId, List<WishStatus> statuses);
@@ -68,7 +69,7 @@ public interface WishRepository extends JpaRepository<Wish, Long>, JpaSpecificat
                 if (searchRequest.getTags() != null && searchRequest.getTags().size() > 0) {
 
                     final List<Predicate> predicatesForTag = new ArrayList<>();
-                    for (Tag tag : searchRequest.getTags()) {
+                    for (TagName tag : searchRequest.getTags()) {
                         predicatesForTag.add(cb.isMember(tag, root.get(Wish_.TAGS)));
                     }
                     predicates.add(cb.and(predicatesForTag.toArray(new Predicate[0])));

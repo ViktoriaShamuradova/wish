@@ -7,12 +7,14 @@ import com.example.wish.exception.auth.TokenException;
 import com.example.wish.exception.profile.CurrentProfileNotFoundException;
 import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileNotFoundException;
+import com.example.wish.exception.wish.ImageException;
 import com.example.wish.exception.wish.WishException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import org.apache.tomcat.util.http.fileupload.impl.FileSizeLimitExceededException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +22,14 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import javax.validation.ConstraintViolationException;
+import javax.validation.ValidationException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -34,6 +39,15 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    //for jpeg ang png image
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ValidationExceptionResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage(ex.getMessage()));
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
     @ExceptionHandler(value = {WishException.class})
     public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(WishException exception) {
         ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
@@ -42,17 +56,15 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(value = {ImageException.class})
+    public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(ImageException exception) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage(exception.getMessage()));
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
 
 
-
-    //catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {
-    //            log.error("Error logging in {}", e.getMessage());
-    //            Map<String, String> errors = new HashMap<>();
-    //            errors.put("token_error", e.getMessage());
-    //            handleException(response, errors);
-    //   response.setContentType("application/json");
-    //        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-    //        new ObjectMapper().writeValue(response.getOutputStream(), errors);
     @ExceptionHandler(ExpiredJwtException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public Map<String, String> handleExpiredJwtException(ExpiredJwtException ex) {
@@ -124,6 +136,22 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(value = {FileSizeLimitExceededException.class})
+    public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(FileSizeLimitExceededException exception) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage("Max size limit 10MB. " + exception.getMessage()));
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(value = {NumberFormatException.class})
+    public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(NumberFormatException exception) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage("failed convert id value of type String to required type long"));
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(value = {ProfileNotFoundException.class})
     public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(ProfileNotFoundException ex) {
         ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.UNAUTHORIZED,
@@ -134,6 +162,15 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(value = {ProfileException.class})
     public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(ProfileException ex) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage(ex.getMessage()));
+        return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
+
+    //ConstraintViolationException
+    @ExceptionHandler(value = {ConstraintViolationException.class})
+    public ResponseEntity<ValidationExceptionResponse> handleApiRequestException(ConstraintViolationException ex) {
         ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
                 ZonedDateTime.now(ZoneId.of("Z")),
                 createErrorMessage(ex.getMessage()));
@@ -173,6 +210,15 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(ValidationException .class)
+    public ResponseEntity<ValidationExceptionResponse> handleFieldMatchException(ValidationException ex) {
+        ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                ZonedDateTime.now(ZoneId.of("Z")),
+                createErrorMessage(ex.getMessage()));
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
 
     @ExceptionHandler(value = {Exception.class})
     public ResponseEntity<ValidationExceptionResponse> handleException(Exception ex) {
@@ -191,6 +237,13 @@ public class ApiExceptionHandler {
             ValidationExceptionResponse errorResponse = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST, ZonedDateTime.now(ZoneId.of("Z")),
                     createErrorMessage(fieldMatchException.getMessage()));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+        if (rootCause instanceof InvalidFormatException) {
+            InvalidFormatException invalidFormatException = (InvalidFormatException) rootCause;
+            ValidationExceptionResponse response = new ValidationExceptionResponse(HttpStatus.BAD_REQUEST,
+                    ZonedDateTime.now(ZoneId.of("Z")),
+                    createErrorMessage("invalid format value. "+ invalidFormatException.getMessage()));
+            return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
         }
 
         // Default error response for other cases
@@ -232,8 +285,6 @@ public class ApiExceptionHandler {
 
         return new ResponseEntity<>(response, new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
-
-
 
 
     private Map<String, String> createErrorMessage(String message) {

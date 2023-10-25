@@ -3,6 +3,7 @@ package com.example.wish.annotation;
 
 import com.example.wish.validator.EmailValidator;
 
+
 import javax.validation.Constraint;
 import javax.validation.Payload;
 import java.lang.annotation.ElementType;

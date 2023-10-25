@@ -5,7 +5,11 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -13,16 +17,19 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
-    private static final String SECRET_KEY = "7133743677397A24432646294A404E635166546A576E5A723475377821412544";
+    @Value("${app.security.token}")
+    private String SECRET_KEY;
     private static final int REFRESH_TOKEN_VALID_DAYS = 365;
     private static final int ACCESS_TOKEN_VALID_DAYS = 60;
+
+   // private final CacheManager cacheManager;
+
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);

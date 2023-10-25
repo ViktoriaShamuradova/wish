@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProfileVisitorWishRepository extends JpaRepository<ProfileVisitorWish, Long> {
 
-    Integer countDistinctByWish(Wish wish);}
+    Integer countDistinctByWish(Wish wish);
+}

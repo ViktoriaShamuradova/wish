@@ -1,8 +1,6 @@
 package com.example.wish.repository;
 
-import com.example.wish.entity.FinishWishStatus;
-import com.example.wish.entity.FinishedWish;
-import com.example.wish.entity.WishStatus;
+import com.example.wish.entity.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -15,6 +13,8 @@ public interface FinishedWishRepository extends JpaRepository<FinishedWish, Long
 
     List<FinishedWish> findByWishOwnProfileId(long ownProfile);
 
+    List<FinishedWish> findByWishAndExecutedProfile(Wish wish, Profile executedProfile);
+
     Optional<FinishedWish> findByWishId(Long id); //проверить , потому что ту может быть ошибка
 
     List<FinishedWish> findByStatusAndWishOwnProfileId(FinishWishStatus status, Long ownProfileId);
@@ -23,5 +23,5 @@ public interface FinishedWishRepository extends JpaRepository<FinishedWish, Long
     List<FinishedWish> findByExecutedProfileIdAndStatusIn( Long executedProfileId, List<FinishWishStatus> statuses);
 
     //этот метод используется для возвращения успешно законченного желания. Анонимно или нет
-    Optional<FinishedWish> findByWishIdAndStatusIn(Long id, List<FinishWishStatus> statuses);
+    Optional<FinishedWish> findByWishIdAndStatusIn(Long wishId, List<FinishWishStatus> statuses);
 }

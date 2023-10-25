@@ -1,7 +1,5 @@
 package com.example.wish.dto.wish;
 
-import com.example.wish.dto.AbstractWishDto;
-import com.example.wish.dto.wish.FinishedWishDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

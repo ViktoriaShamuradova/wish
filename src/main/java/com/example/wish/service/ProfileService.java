@@ -6,6 +6,8 @@ import com.example.wish.dto.profile.UpdateProfileDetails;
 import com.example.wish.model.search_request.ProfileSearchRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,4 +33,10 @@ public interface ProfileService {
     boolean removeProfile(String email);
 
     ProfileDto updateByFields(Map<String, Object> fields);
+
+    void delete();
+
+    String uploadImage(MultipartFile file) throws HttpMediaTypeNotSupportedException, IOException;
+
+    byte[] findImage(String uid);
 }

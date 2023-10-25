@@ -1,6 +1,5 @@
 package com.example.wish.dto.wish;
 
-import com.example.wish.dto.AbstractWishDto;
 import com.example.wish.entity.ExecuteStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
@@ -20,4 +19,5 @@ public class ExecutingWishDto extends AbstractWishDto {
     private ExecuteStatus executingStatus;
     private long wishId; //id of wish not executing wish id
     private int watchCount;
+    private boolean anonymously;
 }

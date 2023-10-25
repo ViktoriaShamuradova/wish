@@ -1,6 +1,5 @@
 package com.example.wish.dto.wish;
 
-import com.example.wish.dto.AbstractWishDto;
 import com.example.wish.entity.FinishWishStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
@@ -18,6 +17,7 @@ public class FinishedWishDto extends AbstractWishDto {
     private FinishWishStatus status;
     private Long executedProfileId;
     private Double earnKarma;
+    private boolean anonymously;
 
 
     private long wishId;

@@ -9,6 +9,7 @@ import org.hibernate.annotations.Formula;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -36,17 +37,21 @@ public class Wish {
     @NotNull
     private String title;
 
-    @ElementCollection(targetClass = Tag.class)
-    @CollectionTable(name = "wish_tag", joinColumns = @JoinColumn(name = "wish_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tag_name")
-    @OrderColumn
-    private Set<Tag> tags;
+    @ManyToMany
+    @JoinTable(
+            name = "wish_tag",
+            joinColumns = @JoinColumn(name = "wish_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "priority")
     @NotNull
     @Enumerated(EnumType.STRING)
     private Priority priority;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "image_id")
+    private WishImage image;
 
     /**
      * only need for sort by priority
@@ -58,10 +63,8 @@ public class Wish {
     @Column(name = "status")
     private WishStatus status;
 
-    @Column(name = "photo")
-    private String photo;
-
     @Column()
+    @NotNull
     private Date created;
 
     @Column(columnDefinition = "integer default 0", nullable = false)

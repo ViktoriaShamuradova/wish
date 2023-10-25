@@ -1,10 +1,7 @@
 package com.example.wish.controller;
 
-import com.example.wish.dto.*;
-import com.example.wish.dto.wish.ConfirmWishRequest;
-import com.example.wish.dto.wish.CreateWishRequest;
-import com.example.wish.dto.wish.SearchWishDto;
-import com.example.wish.dto.wish.StoryWishDto;
+import com.example.wish.dto.SearchScreenWishDto;
+import com.example.wish.dto.wish.*;
 import com.example.wish.model.search_request.WishSearchRequest;
 import com.example.wish.service.WishService;
 import lombok.RequiredArgsConstructor;
@@ -12,20 +9,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.SortDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
-import java.net.URI;
 import java.text.ParseException;
 import java.util.List;
-//проверить момент, что если желание какого-то приоритета в процессе, то создавать желание
-//этого приоритета нельзя, потому что исполнитель может отменить выполнение желания, и желание переходит в статус new
-// тогда получается, что два желания одного приоритета, что по правилам так нельзя
+import java.util.Map;
 
-//if service return void  - need ResponseEntity.ok().build() <?>
 @RestController
 @RequestMapping("/v1/demo/wish")
 @RequiredArgsConstructor
@@ -37,9 +37,10 @@ public class WishController {
      * Возвращает собственные желания текущего юзера для главного экрана в статусе new,
      * in_progress
      * /own-main возможно так для урла будет лучше
+     *
      * @return
      */
-    @GetMapping("/own")
+    @GetMapping("/own-main")
     public ResponseEntity<List<AbstractWishDto>> getOwnWishesMainScreen() {
         return ResponseEntity.ok(wishService.getOwmWishesMainScreen());
     }
@@ -52,32 +53,31 @@ public class WishController {
      *
      * @return
      */
-    @GetMapping("/another-main")
-    public ResponseEntity<List<AbstractWishDto>> getAnotherWishesMainScreen() {
-        return ResponseEntity.ok(wishService.getAnotherWishesMainScreen());
+    @GetMapping("/executing-main")
+    public ResponseEntity<List<AbstractWishDto>> getExecutingWishesMainScreen() {
+        return ResponseEntity.ok(wishService.getExecutingWishesMainScreen());
     }
 
     /**
-     * Возвращает собственные желания текущего юзера в любом статусе
+     * Возвращает изображение желания в любом статусе
+     * Если изображения нет - возвращает пустой ответ со статусом 200
      *
      * @return
      */
-    @GetMapping("/own/{id}")
-    public ResponseEntity<AbstractWishDto> getOwnWish(@PathVariable("id") long id) {
-        return ResponseEntity.ok(wishService.getOwmWish(id));
-
-       // return ResponseEntity.ok(wishService.getOwmWishesInProgress());
+    @GetMapping(value = "/image/{id}", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> getImage(@PathVariable("id") long wishId) {
+        return ResponseEntity.ok(wishService.findImage(wishId));
     }
 
     /**
-     * отображать желание других пользоватедей в статусе new
-     * @param id
+     * используется для просмотра желания, свое и чужое. свле в любом статусе. чужое - новое, в процессе исполнения
      * @return
      */
-    @GetMapping("/another/{id}")
-    public ResponseEntity<AbstractWishDto> findWish(@PathVariable("id") long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<AbstractWishDto> getWish(@PathVariable("id") long id) {
         return ResponseEntity.ok(wishService.find(id));
     }
+
 
     /**
      * используется, когда происходит фильтрация, отображаются желания для поиска только в статусе new
@@ -92,20 +92,77 @@ public class WishController {
         return wishService.find(pageable, request);
     }
 
+    //описание не может быть пустым, также заголовок, приоритет
+    //приоритет, теги с больших букв и так как указано в enum
     @PostMapping(value = "/create")
-    public ResponseEntity<MainScreenProfileDto> createWish(@RequestPart("dto") @Valid CreateWishRequest wishDto) throws ParseException, IOException {
-        URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/boomerang/v1/demo/wish/create").toUriString());
+    public ResponseEntity<WishDto> createWish(@RequestBody @Valid CreateWishRequest wishDto,
+                                              UriComponentsBuilder uriBuilder) {
+        WishDto wish = wishService.create(wishDto);
 
-        MainScreenProfileDto mainScreenProfileDto = wishService.create(wishDto);
-        return ResponseEntity.created(uri).body(mainScreenProfileDto);
+        UriComponents uriComponents = uriBuilder
+                .path("/v1/demo/wish/own/{id}")
+                .buildAndExpand(wish.getId());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(uriComponents.toUri());
+
+        return new ResponseEntity<>(headers, HttpStatus.CREATED);
     }
 
-    @PutMapping(value = "/update/{id}")
-    public ResponseEntity<MainScreenProfileDto> updateWish(@PathVariable("id") long id, @RequestPart("dto") @Valid CreateWishRequest wishDto) throws ParseException, IOException {
+    //NumberFormatException - if wishId doesn't convert string wish id into long
+    @PostMapping(value = "/upload-image")
+    public ResponseEntity<Void> uploadImage(@RequestParam("file") @NotNull MultipartFile file,
+                                            @RequestParam("wishId") @NotNull Long wishId,
+                                            UriComponentsBuilder uriBuilder) throws IOException, HttpMediaTypeNotSupportedException {
+        wishService.uploadImage(wishId, file);
 
-        MainScreenProfileDto mainScreenProfileDto = wishService.update(id, wishDto);
-        return ResponseEntity.ok(mainScreenProfileDto);
+        UriComponents uriComponents = uriBuilder
+                .path("/v1/demo/wish/image/{id}")
+                .buildAndExpand(wishId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(uriComponents.toUri());
+
+        return new ResponseEntity<>(headers, HttpStatus.CREATED);
     }
+
+    /**
+     * fields - содержат только измененные значения
+     * если передать то же значение priority - будет исключение "You have a wish of the same priority",
+     * если передать tagNames: null - "Error updating wish. Invalid value for tags field." В данном случае передать  "tagNames": []
+     * если переданы поля, которые нельзя обновить, наприем, status - исключение "unable to update field= "
+     *
+     * @param id
+     * @param fields
+     * @return
+     * @throws ParseException
+     */
+
+    @PatchMapping(value = "/{id}")
+    public ResponseEntity<WishDto> updateWish(@PathVariable("id") long id,
+                                              @RequestBody Map<String, Object> fields) {
+        return ResponseEntity.ok(wishService.updateByFields(id, fields));
+    }
+
+    /**
+     * В желании можно изменить название, описание, приоритет, теги
+     * передается полностью желание со старыми значениями
+     * если оглавление пустое - исключение
+     * если описание пустое - исключение
+     * если приоритет пустой - исключение
+     * теги пустые - удаляются теги
+     *
+     * @param id
+     * @param updateWishRequest
+     * @return
+     * @throws ParseException
+     */
+    @PostMapping(value = "/update/{id}")
+    public ResponseEntity<WishDto> updateWishWithUpdateRequest(@PathVariable("id") long id,
+                                                               @Valid @RequestBody UpdateWishRequest updateWishRequest) {
+        return ResponseEntity.ok(wishService.update(id, updateWishRequest));
+    }
+
 
     /**
      * когда взял на исполнение желание
@@ -115,10 +172,10 @@ public class WishController {
      * @return
      */
     @GetMapping("/execute/{id}")
-    public ResponseEntity<MainScreenProfileDto> executeWish(@RequestParam(name = "anonymously", required = false) boolean anonymously,
-                                                            @PathVariable("id") long id) {
-        MainScreenProfileDto profile = wishService.execute(id, anonymously);
-        return ResponseEntity.ok(profile);
+    public ResponseEntity<Void> executeWish(@RequestParam(name = "anonymously", required = false) boolean anonymously,
+                                      @PathVariable("id") long id) {
+        wishService.execute(id, anonymously);
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     /**
@@ -129,9 +186,9 @@ public class WishController {
      * @return
      */
     @GetMapping("/finish/{id}")
-    public ResponseEntity<MainScreenProfileDto> finishWish(@PathVariable("id") long id) {
-        MainScreenProfileDto profile = wishService.finish(id);
-        return ResponseEntity.ok(profile);
+    public ResponseEntity<Void> finishWish(@PathVariable("id") long id) {
+        wishService.finish(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -143,9 +200,9 @@ public class WishController {
      */
 
     @PostMapping("/confirm")
-    public ResponseEntity<MainScreenProfileDto> confirmWish(@RequestBody ConfirmWishRequest confirmWishRequest) {
-        MainScreenProfileDto profile = wishService.confirm(confirmWishRequest);
-        return ResponseEntity.ok(profile);
+    public ResponseEntity<Void> confirmWish(@RequestBody ConfirmWishRequest confirmWishRequest) {
+        wishService.confirm(confirmWishRequest);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -155,18 +212,16 @@ public class WishController {
      * @return
      */
     @GetMapping("/cancelExecution/{id}")
-    public ResponseEntity<MainScreenProfileDto> cancelExecutionWish(@PathVariable("id") long id) {
-        MainScreenProfileDto profile = wishService.cancelExecution(id);
-        return ResponseEntity.ok(profile);
+    public ResponseEntity<Void> cancelExecutionWish(@PathVariable("id") long id) {
+        wishService.cancelExecution(id);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<MainScreenProfileDto> deleteWish(@PathVariable("id") long id) {
-        MainScreenProfileDto profile = wishService.delete(id);
-        return ResponseEntity.ok(profile);
+    public ResponseEntity<Void> deleteWish(@PathVariable("id") long id) {
+        wishService.delete(id);
+        return ResponseEntity.noContent().build();
     }
-
-
 
 
     /**

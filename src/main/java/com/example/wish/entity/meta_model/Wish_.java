@@ -2,9 +2,11 @@ package com.example.wish.entity.meta_model;
 
 import com.example.wish.entity.*;
 
+
 import javax.annotation.processing.Generated;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.StaticMetamodel;
+
 import java.util.Date;
 import java.util.Set;
 
@@ -19,7 +21,7 @@ public class Wish_ {
     public static volatile SingularAttribute<Wish, Date> created;
     public static volatile SingularAttribute<Wish, Integer> watchCount;
     public static volatile SingularAttribute<Wish, Profile> ownProfile;
-    public static volatile SingularAttribute<Wish, Set<Tag>> tags;
+    public static volatile SingularAttribute<Wish, Set<TagName>> tags;
 
 
     public static final String DESCRIPTION = "description";

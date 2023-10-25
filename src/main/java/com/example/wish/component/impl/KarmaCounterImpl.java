@@ -18,14 +18,13 @@ public class KarmaCounterImpl implements KarmaCounter {
     private final Map<Integer, Map<ProfileStatus, ProfileStatusLevel>> profileLevels = new TreeMap<>();
 
     @Autowired
-    private FinishedWishRepository finishedWishRepository;
+    private final FinishedWishRepository finishedWishRepository;
 
-
-    public KarmaCounterImpl() {
+    public KarmaCounterImpl(FinishedWishRepository finishedWishRepository) {
+        this.finishedWishRepository = finishedWishRepository;
         subtractionPercentage.put(0, 100.0); //если никогда не исполнял, то начисляем 100 от приоритета
         subtractionPercentage.put(1, 50.0); //один раз уже исполнил
         subtractionPercentage.put(2, 10.0); //два раза исполнил
-
 
         karmaValue.put(Priority.ONE, 7); //в зависимости от приоритета начисляем карму
         karmaValue.put(Priority.TWO, 6);
@@ -61,14 +60,12 @@ public class KarmaCounterImpl implements KarmaCounter {
     }
 
     @Override
-    public Profile count(ExecutingWish executingWish) {
+    public void count(ExecutingWish executingWish) {
 
         double additionalSum = calculateAdditionalSumToKarma(executingWish);
         double result = executingWish.getExecutingProfile().getKarma() + additionalSum;
 
         executingWish.getExecutingProfile().setKarma(result);
-
-        return executingWish.getExecutingProfile();
     }
 
     @Override
@@ -95,7 +92,7 @@ public class KarmaCounterImpl implements KarmaCounter {
     }
 
     @Override
-    public Profile changeStatus(Profile executedProfile) {
+    public void changeStatus(Profile executedProfile) {
         double karma = executedProfile.getKarma();
         int karmaInt = (int) karma;
 
@@ -113,12 +110,9 @@ public class KarmaCounterImpl implements KarmaCounter {
 
         executedProfile.setStatus(statusEntry.getValue().keySet().stream().findFirst().get());
         executedProfile.setStatusLevel(statusEntry.getValue().values().stream().findFirst().get());
-        return executedProfile;
-
     }
 
-
-    //success finish wish
+    //ищем сколько раз исполняющий профиль выполнял желания данного собственника
     private int getCountOfFinishedWishesForTheSameOwnProfile(ExecutingWish executingWish) {
 
         List<FinishedWish> finishedWishes = finishedWishRepository.findByStatusAndWishOwnProfileId(FinishWishStatus.FINISHED_SUCCESS,

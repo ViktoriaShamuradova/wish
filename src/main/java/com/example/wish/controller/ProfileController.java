@@ -11,11 +11,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.SortDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
+
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +62,31 @@ public class ProfileController {
         return ResponseEntity.ok(profileDto);
     }
 
+    @PostMapping(value = "/upload-image")
+    public ResponseEntity<Void> uploadImage(@RequestParam("file") @NotNull MultipartFile file,
+                                            UriComponentsBuilder uriBuilder) throws IOException, HttpMediaTypeNotSupportedException {
+        String uid = profileService.uploadImage(file);
+
+        UriComponents uriComponents = uriBuilder
+                .path("/v1/demo/profile/image/{uid}")
+                .buildAndExpand(uid);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(uriComponents.toUri());
+
+        return new ResponseEntity<>(headers, HttpStatus.CREATED);
+    }
+
+    /**
+     * Возвращает изображение любого пользователя
+     *
+     * @return
+     */
+    @GetMapping(value = "/image/{uid}", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> getImage(@PathVariable("uid") String uid) {
+        return ResponseEntity.ok(profileService.findImage(uid));
+    }
+
     /**
      * обновляем профиль,
      * нужно указывать те поля, которые нужно обновить
@@ -70,13 +103,17 @@ public class ProfileController {
         return ResponseEntity.ok(profileDto);
     }
 
-//    @DeleteMapping(value = "/my-profile")
-//    public ResponseEntity delete(
-//            @PathVariable String email) {
-//        boolean isDeleted = profileService.deleteProfile();
-//        return new ResponseEntity<>(isDeleted, HttpStatus.I_AM_A_TEAPOT);
-//
-//    }
+    /**
+     * удалить можно самого себя.
+     * на фронте сделать окошко с сообщением о удалении и невозможности восстановления профиля
+     * очистить секьюрити холдер?
+     * @return
+     */
+    @DeleteMapping(value = "/my-profile")
+    public ResponseEntity<Void> delete() {
+        profileService.delete();
+        return ResponseEntity.noContent().build();
+    }
 
     /**
      * возвращает информацию о профиле (о своем и чужом)/

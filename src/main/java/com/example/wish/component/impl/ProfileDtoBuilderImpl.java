@@ -6,6 +6,7 @@ import com.example.wish.component.WishMapper;
 import com.example.wish.dto.*;
 import com.example.wish.dto.profile.ProfileDto;
 import com.example.wish.dto.profile.ProfilesDetails;
+import com.example.wish.dto.wish.AbstractWishDto;
 import com.example.wish.dto.wish.ExecutingWishDto;
 import com.example.wish.dto.wish.FinishedWishDto;
 import com.example.wish.entity.*;
@@ -65,14 +66,14 @@ public class ProfileDtoBuilderImpl implements ProfileDtoBuilder {
         return profileDto;
     }
 
-    private List<AbstractWishDto> findOwnNewWishes(Long profileId) {
-        List<AbstractWishDto> wishDtos = new ArrayList<>();
-        List<Wish> wishes = wishRepository.findByOwnProfileIdAndStatus(profileId, WishStatus.NEW);
-        for (Wish w : wishes) {
-            wishDtos.add(wishMapper.convertToDto(w));
-        }
-        return wishDtos;
-    }
+//    private List<AbstractWishDto> findOwnNewWishes(Long profileId) {
+//        List<AbstractWishDto> wishDtos = new ArrayList<>();
+//        List<Wish> wishes = wishRepository.findByOwnProfileIdAndStatus(profileId, WishStatus.NEW);
+//        for (Wish w : wishes) {
+//            wishDtos.add(wishMapper.convertToDto(w));
+//        }
+//        return wishDtos;
+//    }
 
 
     @Override

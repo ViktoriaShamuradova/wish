@@ -43,6 +43,6 @@ public class CurrentProfile extends User {
 
     @Override
     public String toString() {
-        return String.format("CurrentProfile [id=%s, username=%s]", id);
+        return String.format("CurrentProfile [id=%s, username=%s]", id, email);
     }//getUsername()
 }

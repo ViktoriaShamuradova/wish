@@ -9,9 +9,9 @@ import com.example.wish.exception.profile.ProfileException;
 import com.example.wish.exception.profile.ProfileExistException;
 import com.example.wish.model.CurrentProfile;
 import com.example.wish.repository.ProfileRepository;
+import com.example.wish.repository.TokenRepository;
 import com.example.wish.util.DataBuilder;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,20 +30,39 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.security.auth.message.AuthException;
 import javax.validation.constraints.NotNull;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class AuthenticationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationService.class);
 
     private final ProfileRepository profileRepository;
-    private final EmailValidator emailValidator;
+    private final TokenRepository tokenRepository;
+    //  private final EmailValidator emailValidator;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+
+
     private final AuthenticationManager authenticationManager;
     private final NotificationManagerService notificationManagerService;
     private final UserDetailsService userDetailsService;
+
+    public AuthenticationService(ProfileRepository profileRepository,
+                                 JwtService jwtService,
+                                 PasswordEncoder passwordEncoder,
+                                 AuthenticationManager authenticationManager,
+                                 NotificationManagerService notificationManagerService,
+                                 UserDetailsService userDetailsService,
+                                 TokenRepository tokenRepository) {
+        this.profileRepository = profileRepository;
+        this.tokenRepository = tokenRepository;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.notificationManagerService = notificationManagerService;
+        this.userDetailsService = userDetailsService;
+    }
 
     private static final int EXPIRE_MINUTES_FOR_REGISTRATION = 60;
     private static final int EXPIRE_MINUTES_FOR_PASSWORD = 10;
@@ -56,10 +75,11 @@ public class AuthenticationService {
     private int maxTryCountToGenerate;
 
     /**
-     * before creating profile user confirmed his email
+     * Перед тем,как создать профиль, нужно новому пользователю отправить код с паролем на почту
      *
-     * @param registerRequest
-     * @return
+     * @param registerRequest - почта, пароль, подтверждение пароля
+     *                        Если такая почта существует - исключение
+     *                        Возращается токен;
      */
     @Transactional
     public AuthResponse register(RegistrationRequest registerRequest) {
@@ -74,14 +94,28 @@ public class AuthenticationService {
 
             CurrentProfile currentProfile = new CurrentProfile(saved);
 
-            var accessToken = jwtService.generateAccessToken(currentProfile);
-            var refreshToken = jwtService.generateRefreshToken(currentProfile);
+            var jwtToken = jwtService.generateAccessToken(currentProfile);
 
-            return createAuthResponse(accessToken, refreshToken);
+            saveProfileToken(saved, jwtToken);
+
+            return createAuthResponse(jwtToken);
         }
     }
 
-    @Transactional(readOnly = true)
+    private void saveProfileToken(Profile profile, String jwtToken) {
+        Token token = Token.builder()
+                .profile(profile)
+                .token(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .revoked(false)
+                .expired(false)
+                .build();
+        Token save = tokenRepository.save(token);
+        System.out.println(token);
+
+    }
+
+    @Transactional()
     public AuthResponse authenticate(@NotNull AuthRequest authRequest) {
         var profile = profileRepository.findByEmail(authRequest.getEmail())
                 .orElseThrow(() -> new ProfileException("Email not found: " + authRequest.getEmail()));
@@ -89,26 +123,40 @@ public class AuthenticationService {
         if (profile.getProvider() == Provider.GOOGLE) {
             throw new ProfileException("User registered with Google. Please use the Google sign-in URL.");
         }
-
         try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            authRequest.getEmail(),
-                            authRequest.getPassword()
-                    )
-            );
+            authenticateUser(authRequest);
         } catch (BadCredentialsException e) {
             throw new ProfileException("Invalid email or password.");
-        } catch (AuthenticationException e) {
-            throw new ProfileException("Please confirm your email address to sign in.");
+        } catch (AuthenticationException e) {//enabled, lock = false. нужно enabled=1 locked 0
+            throw new ProfileException(e.getMessage());
         }
 
         CurrentProfile currentProfile = new CurrentProfile(profile);
 
-        var accessToken = jwtService.generateAccessToken(currentProfile);
-        var refreshToken = jwtService.generateRefreshToken(currentProfile);
+        var token = jwtService.generateAccessToken(currentProfile);
 
-        return createAuthResponse(accessToken, refreshToken);
+        revokeAllProfileTokens(profile);
+        saveProfileToken(profile, token);
+
+        return createAuthResponse(token);
+    }
+
+    private void revokeAllProfileTokens(Profile profile) {
+        List<Token> validTokens = tokenRepository.findAllValidTokensByProfile(profile.getId());
+        if (validTokens.isEmpty()) return;
+        validTokens.forEach(token -> {
+            token.setExpired(true);
+            token.setRevoked(true);
+        });
+        tokenRepository.saveAll(validTokens);
+    }
+
+    private void authenticateUser(AuthRequest authRequest) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        authRequest.getEmail(),
+                        authRequest.getPassword())
+        );
     }
 
     @Transactional
@@ -133,18 +181,25 @@ public class AuthenticationService {
     @Transactional
     public AuthResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
         Profile profile = profileRepository.findByEmail(updatePasswordRequest.getEmail())
-                .orElseThrow(() -> new ProfileException("email " + updatePasswordRequest.getEmail() + " not found"));
+                .orElseThrow(() -> new ProfileException("email "
+                        + updatePasswordRequest.getEmail() + " not found"));
 
-        profile.setPassword(passwordEncoder.encode(updatePasswordRequest.getPassword()));
+        if (profile.getProvider() == Provider.LOCAL) {
 
-        profileRepository.save(profile);
+            profile.setPassword(passwordEncoder.encode(updatePasswordRequest.getPassword()));
 
-        CurrentProfile currentProfile = new CurrentProfile(profile);
+            profileRepository.save(profile);
 
-        var accessToken = jwtService.generateAccessToken(currentProfile);
-        var refreshToken = jwtService.generateRefreshToken(currentProfile);
+            CurrentProfile currentProfile = new CurrentProfile(profile);
 
-        return createAuthResponse(accessToken, refreshToken);
+            var jwt = jwtService.generateAccessToken(currentProfile);
+            revokeAllProfileTokens(profile);
+            saveProfileToken(profile, jwt);
+
+            return createAuthResponse(jwt);
+        } else {
+            throw new ProfileException("can't update google password");
+        }
     }
 
 
@@ -178,11 +233,11 @@ public class AuthenticationService {
         String username = jwtService.extractUsername(refreshToken);
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
         if (jwtService.isTokenValid(refreshToken, userDetails)) {
-            String accessToken = jwtService.generateAccessToken(userDetails);
+            String jwt = jwtService.generateAccessToken(userDetails);
 
-            return createAuthResponse(accessToken, refreshToken);
+            return createAuthResponse(jwt);
         }
-        return new AuthResponse(null, null);
+        return new AuthResponse(null);
     }
 
     /**
@@ -196,9 +251,8 @@ public class AuthenticationService {
         String username = jwtService.extractUsername(refreshToken);
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
         if (jwtService.isTokenValid(refreshToken, userDetails)) {
-            final String accessToken = jwtService.generateAccessToken(userDetails);
-            final String newRefreshToken = jwtService.generateRefreshToken(userDetails);
-            return new AuthResponse(accessToken, newRefreshToken);
+            final String jwt = jwtService.generateAccessToken(userDetails);
+            return new AuthResponse(jwt);
 
         }
         throw new AuthException("Not valid refresh token");
@@ -221,10 +275,9 @@ public class AuthenticationService {
                 .build();
     }
 
-    private AuthResponse createAuthResponse(String accessToken, String refreshToken) {
+    private AuthResponse createAuthResponse(String token) {
         return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .token(token)
                 .build();
     }
 

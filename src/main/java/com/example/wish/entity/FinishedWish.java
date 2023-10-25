@@ -45,23 +45,31 @@ public class FinishedWish {
     private Wish wish;
 
     @Column
+    private int attempts;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean anonymously;
+
+    @Column
     private String reasonOfFailedFromOwner;
 
     @Column
     private String reasonOfFailedFromExecutor;
 
-    public FinishedWish(Profile executingProfile, Wish wish, Timestamp from, FinishWishStatus status) {
+    public FinishedWish(Profile executingProfile, Wish wish, Timestamp from, FinishWishStatus status, int attempts) {
         this.executedProfile = executingProfile;
         this.wish = wish;
         this.finish = from;
         this.status = status;
+        this.attempts = attempts;
     }
 
-    public FinishedWish(Profile executingProfile, Wish wish, Timestamp from, FinishWishStatus status, String reasonOfFailedFromOwner) {
+    public FinishedWish(Profile executingProfile, Wish wish, Timestamp from, FinishWishStatus status, String reasonOfFailedFromOwner, int attempts) {
         this.executedProfile = executingProfile;
         this.wish = wish;
         this.finish = from;
         this.status = status;
         this.reasonOfFailedFromOwner = reasonOfFailedFromOwner;
+        this.attempts = attempts;
     }
 }

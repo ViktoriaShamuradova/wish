@@ -5,6 +5,7 @@ import com.example.wish.entity.*;
 import javax.annotation.processing.Generated;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.StaticMetamodel;
+
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;

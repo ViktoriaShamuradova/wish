@@ -16,9 +16,15 @@ import java.io.Serializable;
 @JsonIdentityInfo(
         generator = ObjectIdGenerators.PropertyGenerator.class,
         property = "id")
-@Table(name = "profile_visitor_test_v2", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"profile_id", "wish_id"})
-})
+@Table(
+        name = "profile_visitor_test_v2",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"profile_id", "wish_id"})
+        },
+        indexes = {
+                @Index(name = "idx_wish_id", columnList = "wish_id")
+        }
+)
 @Entity
 public class ProfileVisitorWish implements Serializable {
 

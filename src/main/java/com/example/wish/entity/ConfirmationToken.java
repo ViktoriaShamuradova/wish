@@ -1,5 +1,7 @@
 package com.example.wish.entity;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -8,6 +10,9 @@ import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id")
 @Entity
 @Table(name = "confirmation_token_test_v2", indexes = {
         @Index(name = "id_confirmation_token_token", columnList = "token")
@@ -29,7 +34,7 @@ public class ConfirmationToken {
     @Column(nullable = false)
     private LocalDateTime confirmedAt;
 
-    @ManyToOne
+    @ManyToOne()
     @JoinColumn(
             nullable = false,
             name = "profile_id")

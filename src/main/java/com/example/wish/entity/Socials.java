@@ -8,6 +8,7 @@ import javax.persistence.AccessType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 
+
 @Data
 @Embeddable
 @Access(AccessType.FIELD)

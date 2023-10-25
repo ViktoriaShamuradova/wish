@@ -33,7 +33,6 @@ public class ProfileMapperImpl implements ProfileMapper {
     @Override
     public MainScreenProfileDto convertToDtoMainScreen(Profile profile) {
         MainScreenProfileDto mainScreenProfileDto = modelMapper.map(profile, MainScreenProfileDto.class);
-        mainScreenProfileDto.setPhoto(profile.getPhoto());
 
         return mainScreenProfileDto;
     }
@@ -42,7 +41,6 @@ public class ProfileMapperImpl implements ProfileMapper {
     public ProfilesDetails convertToDtoAnother(Profile profile) {
         ProfilesDetails anotherProfileDto = modelMapper.map(profile, ProfilesDetails.class);
         anotherProfileDto.setAge(profile.getAge());
-        anotherProfileDto.setPhoto(profile.getPhoto());
         return anotherProfileDto;
     }
 

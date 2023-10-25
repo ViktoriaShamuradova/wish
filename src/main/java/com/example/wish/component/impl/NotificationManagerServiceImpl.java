@@ -163,7 +163,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to owner profile to confirm request " + ownProfile.getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS) {
+        if (executingWish.isAnonymously()) {
             content.put("firstName", null);
         } else {
             content.put("firstName", ownProfile.getFirstName());
@@ -188,7 +188,7 @@ public class NotificationManagerServiceImpl implements NotificationManagerServic
         LOGGER.debug("Send to owner profile information about failed" + executingWish.getExecutingProfile().getEmail());
 
         Map<String, Object> content = new HashMap<>();
-        if (executingWish.getExecutingStatus() == ExecuteStatus.WAITING_FOR_CONFIRMATION_ANONYMOUS) {
+        if (executingWish.isAnonymously()) {
             content.put("firstName", null);
         } else {
             content.put("firstName", executingWish.getExecutingProfile().getFirstName());

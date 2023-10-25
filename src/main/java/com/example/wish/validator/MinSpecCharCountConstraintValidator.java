@@ -5,6 +5,7 @@ import com.example.wish.annotation.MinSpecCharCount;
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 
+
 public class MinSpecCharCountConstraintValidator implements ConstraintValidator<MinSpecCharCount, CharSequence> {
 
     private int minValue;

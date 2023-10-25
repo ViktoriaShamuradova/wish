@@ -1,16 +1,17 @@
-package com.example.wish.dto;
+package com.example.wish.dto.wish;
 
 import com.example.wish.constant.ExceptionMessage;
 import com.example.wish.constant.Regex;
-import com.example.wish.dto.wish.WishDto;
 import com.example.wish.entity.Priority;
-import com.example.wish.entity.Tag;
+import com.example.wish.entity.TagName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Date;
@@ -32,21 +33,17 @@ public class AbstractWishDto {
     @NotBlank(message = ExceptionMessage.NOT_BE_EMPTY)
     private String description;
 
+    @NotNull
     private Priority priority;
-    private Set<Tag> tags;
+    private Set<TagName> tagNames;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date created;
-
-    private String photo;
-
 
     public AbstractWishDto(WishDto wish) {
         this.title = wish.getTitle();
         this.description = wish.getDescription();
         this.priority = wish.getPriority();
-        this.tags = wish.getTags();
-        this.photo = wish.getPhoto();
         this.created = wish.getCreated();
     }
 }

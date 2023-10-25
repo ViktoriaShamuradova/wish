@@ -1,6 +1,8 @@
 package com.example.wish.dto;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
 @Data
 @Builder
@@ -8,7 +10,5 @@ import lombok.*;
 public class AuthResponse {
     private final String type = "Bearer";
 
-    private final String accessToken;
-    private final String refreshToken;
-
+    private final String token;
 }

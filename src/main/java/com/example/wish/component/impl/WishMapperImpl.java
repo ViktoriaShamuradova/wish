@@ -1,16 +1,13 @@
 package com.example.wish.component.impl;
 
-import com.example.wish.component.KarmaCounter;
 import com.example.wish.component.WishMapper;
-import com.example.wish.dto.*;
-import com.example.wish.dto.wish.ExecutingWishDto;
-import com.example.wish.dto.wish.FinishedWishDto;
-import com.example.wish.dto.wish.SearchWishDto;
-import com.example.wish.dto.wish.WishDto;
+import com.example.wish.dto.wish.*;
 import com.example.wish.entity.*;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
 
 
 @RequiredArgsConstructor
@@ -38,9 +35,20 @@ public class WishMapperImpl implements WishMapper {
     @Override
     public WishDto convertToDto(Wish wish) {
         WishDto wishDto = modelMapper.map(wish, WishDto.class);
-        wishDto.setPhoto(wish.getPhoto());
-
+        wishDto.setTagNames(wish.getTags().stream().map(Tag::getTagName).collect(Collectors.toSet()));
         return wishDto;
+    }
+
+    @Override
+    public WishImageDto convertToDto(WishImage image) {
+        WishImageDto wishImageDto = modelMapper.map(image, WishImageDto.class);
+        return wishImageDto;
+    }
+
+    @Override
+    public Wish convertToEntity(CreateWishRequest createWishRequest) {
+        Wish wish = modelMapper.map(createWishRequest, Wish.class);
+        return wish;
     }
 
     @Override
@@ -57,16 +65,16 @@ public class WishMapperImpl implements WishMapper {
     @Override
     public ExecutingWishDto convertToDto(ExecutingWish executingWish) {
         ExecutingWishDto executingWishDto = modelMapper.map(executingWish, ExecutingWishDto.class);
-        if (executingWishDto.getExecutingStatus() == ExecuteStatus.IN_PROGRESS_ANONYMOUS) {
+        if (executingWishDto.isAnonymously()) {
             executingWishDto.setExecutingProfileId(null);
 
         }
         executingWishDto.setWishId(executingWish.getWish().getId());
-        executingWishDto.setPhoto(executingWish.getWish().getPhoto());
+        //   executingWishDto.setPhoto(executingWish.getWish().getPhoto());
         executingWishDto.setTitle(executingWish.getWish().getTitle());
         executingWishDto.setDescription(executingWish.getWish().getDescription());
         executingWishDto.setPriority(executingWish.getWish().getPriority());
-        executingWishDto.setTags(executingWish.getWish().getTags());
+       // executingWishDto.setTags(executingWish.getWish().getTags());
         executingWishDto.setCreated(executingWish.getWish().getCreated());
 
         return executingWishDto;
@@ -78,14 +86,14 @@ public class WishMapperImpl implements WishMapper {
         finishedWishDto.setTitle(w.getWish().getTitle());
         finishedWishDto.setDescription(w.getWish().getDescription());
         finishedWishDto.setPriority(w.getWish().getPriority());
-        finishedWishDto.setTags(w.getWish().getTags());
+        //finishedWishDto.setTags(w.getWish().getTags());
         finishedWishDto.setCreated(w.getWish().getCreated());
         finishedWishDto.setWishId(w.getWish().getId());
 
         finishedWishDto.setEarnKarma(w.getEarnKarma());
-        finishedWishDto.setPhoto(w.getWish().getPhoto());
+        // finishedWishDto.setPhoto(w.getWish().getPhoto());
 
-        if (finishedWishDto.getStatus() == FinishWishStatus.FINISHED_FAILED_ANONYMOUS) {
+        if (finishedWishDto.isAnonymously()) {
             finishedWishDto.setExecutedProfileId(null);
         } else {
             finishedWishDto.setExecutedProfileId(w.getExecutedProfile().getId());
@@ -93,4 +101,6 @@ public class WishMapperImpl implements WishMapper {
 
         return finishedWishDto;
     }
+
+
 }

@@ -2,7 +2,7 @@ package com.example.wish.model.search_request;
 
 import com.example.wish.entity.Priority;
 import com.example.wish.entity.Sex;
-import com.example.wish.entity.Tag;
+import com.example.wish.entity.TagName;
 import com.example.wish.entity.WishStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
@@ -20,7 +20,7 @@ public class WishSearchRequest {
     private String country;
     private Integer minAge;
     private Integer maxAge;
-    private Set<Tag> tags;
+    private Set<TagName> tags;
     @JsonIgnore
     private WishStatus status;
     @JsonIgnore
